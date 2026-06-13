@@ -111,6 +111,7 @@ config.bots.forEach(bot => {
     coords: null,
     health: null,
     food: null,
+    money: null,
     reconnectTimeout: null,
     loginCheckTimeout: null,
     isAutoJoining: false,
@@ -184,6 +185,38 @@ function cleanWindowTitle(title) {
   return cleanMinecraftChat(title);
 }
 
+// Helper: Trích xuất số tiền từ bảng điểm Scoreboard của bot
+function getBotMoneyFromScoreboard(bot) {
+  if (!bot || !bot.scoreboard) return null;
+
+  // Từ khóa nhận diện dòng tiền tệ trong bảng điểm
+  const keywords = ['money', 'xu', 'tiền', 'bal', 'balance', 'xu:', 'money:'];
+
+  for (const boardName in bot.scoreboard) {
+    const board = bot.scoreboard[boardName];
+    if (board && board.itemsMap) {
+      for (const key in board.itemsMap) {
+        const item = board.itemsMap[key];
+        if (!item || !item.name) continue;
+
+        // Xóa mã màu § (ví dụ: §6MONEY: §e8820 -> MONEY: 8820)
+        const cleanName = item.name.replace(/§[0-9a-fk-or]/gi, '').trim();
+        const cleanNameLower = cleanName.toLowerCase();
+
+        const hasKeyword = keywords.some(kw => cleanNameLower.includes(kw));
+        if (hasKeyword) {
+          // Trích xuất chuỗi số đầu tiên có thể chứa dấu phẩy/chấm/kí tự $ (ví dụ $8,820 hoặc 150.000)
+          const matches = cleanName.match(/\$?([0-9]{1,3}(?:[,.][0-9]{3})*(?:\.[0-9]+)?|[0-9]+)/);
+          if (matches && matches[0]) {
+            return matches[0].replace('$', '').trim();
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // Xây dựng dữ liệu trạng thái bot gửi về client
 function getBotsStatusData() {
   const statusData = {};
@@ -214,6 +247,7 @@ function getBotsStatusData() {
         coords: null,
         health: null,
         food: null,
+        money: null,
         isAutoJoining: false,
         currentGuiStep: 0
       };
@@ -227,6 +261,7 @@ function getBotsStatusData() {
       coords: b.coords,
       health: b.health,
       food: b.food,
+      money: b.money,
       config: getBotConfig(config, username) // Gửi cấu hình riêng biệt của từng bot
     };
   });
@@ -693,10 +728,19 @@ setInterval(() => {
   let changed = false;
   Object.keys(activeBots).forEach(name => {
     const activeBot = activeBots[name];
-    if (activeBot.bot && activeBot.bot.entity && activeBot.state === 'online') {
-      activeBot.coords = activeBot.bot.entity.position;
+    if (activeBot.bot && activeBot.state === 'online') {
+      if (activeBot.bot.entity) {
+        activeBot.coords = activeBot.bot.entity.position;
+      }
       activeBot.health = activeBot.bot.health;
       activeBot.food = activeBot.bot.food;
+
+      // Cập nhật số tiền từ bảng điểm
+      const money = getBotMoneyFromScoreboard(activeBot.bot);
+      if (money !== null && money !== activeBot.money) {
+        activeBot.money = money;
+      }
+      
       changed = true;
     }
   });

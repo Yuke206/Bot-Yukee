@@ -48,6 +48,11 @@ const bulkPassword = document.getElementById('bulk-password');
 const checkboxSelectAll = document.getElementById('checkbox-select-all');
 const botsList = document.getElementById('bots-list');
 
+// DOM Elements - Bulk Operations
+const btnBulkStart = document.getElementById('btn-bulk-start');
+const btnBulkStop = document.getElementById('btn-bulk-stop');
+const bulkStartDelayInput = document.getElementById('bulk-start-delay');
+
 // DOM Elements - Header Summary
 const countOnline = document.getElementById('count-online');
 const countConnecting = document.getElementById('count-connecting');
@@ -163,6 +168,9 @@ function renderBotsList(bots) {
     let statusText = bot.state.toUpperCase();
     if (bot.state === 'online' && bot.coords) {
       statusText = `X: ${Math.round(bot.coords.x)}, Y: ${Math.round(bot.coords.y)}, Z: ${Math.round(bot.coords.z)}`;
+      if (bot.money !== undefined && bot.money !== null) {
+        statusText += ` | 💰: ${bot.money}`;
+      }
     }
     
     const isChecked = selectedBots.has(name) ? 'checked' : '';
@@ -655,4 +663,86 @@ btnCloseGuiManually.addEventListener('click', () => {
   if (!currentActiveGuiBot) return;
   socket.emit('gui-close-request', { botname: currentActiveGuiBot });
   appendLog(`[Hệ thống] Đang gửi yêu cầu đóng GUI...`, 'system', currentActiveGuiBot);
+});
+
+// Logic Bật/Tắt Hàng Loạt với Khoảng Trễ tùy chỉnh
+let bulkStartTimeoutId = null;
+
+btnBulkStart.addEventListener('click', () => {
+  if (selectedBots.size === 0) {
+    alert('Vui lòng tích chọn các bot bạn muốn bật hàng loạt ở danh sách bên trái!');
+    return;
+  }
+
+  // Lấy các bot được chọn đang Offline
+  const offlineSelected = Array.from(selectedBots).filter(name => {
+    return currentBotsData[name] && currentBotsData[name].state === 'offline';
+  });
+
+  if (offlineSelected.length === 0) {
+    appendLog('[Hệ thống] Không có bot nào đang offline trong số các bot được tích chọn.', 'system');
+    return;
+  }
+
+  const delaySeconds = parseFloat(bulkStartDelayInput.value);
+  const delayMs = (isNaN(delaySeconds) || delaySeconds < 0) ? 3000 : delaySeconds * 1000;
+
+  appendLog(`[Hệ thống] Bắt đầu bật hàng loạt ${offlineSelected.length} bot với khoảng trễ ${delayMs / 1000} giây...`, 'system');
+
+  let index = 0;
+  
+  // Hủy hàng đợi cũ nếu có trước khi chạy hàng đợi mới
+  if (bulkStartTimeoutId) {
+    clearTimeout(bulkStartTimeoutId);
+  }
+
+  function startNextBot() {
+    if (index >= offlineSelected.length) {
+      appendLog('[Hệ thống] Hoàn thành bật hàng loạt các bot đã chọn.', 'system');
+      bulkStartTimeoutId = null;
+      return;
+    }
+
+    const name = offlineSelected[index];
+    appendLog(`[Hệ thống] Bật bot (${index + 1}/${offlineSelected.length}): ${name}`, 'system');
+    socket.emit('start-bot-instance', name);
+
+    index++;
+    if (index < offlineSelected.length) {
+      bulkStartTimeoutId = setTimeout(startNextBot, delayMs);
+    } else {
+      bulkStartTimeoutId = null;
+    }
+  }
+
+  startNextBot();
+});
+
+btnBulkStop.addEventListener('click', () => {
+  // Dừng hàng đợi bật hàng loạt nếu đang chạy
+  if (bulkStartTimeoutId) {
+    clearTimeout(bulkStartTimeoutId);
+    bulkStartTimeoutId = null;
+    appendLog('[Hệ thống] Đã hủy hàng đợi bật hàng loạt.', 'system');
+  }
+
+  if (selectedBots.size === 0) {
+    alert('Vui lòng tích chọn các bot bạn muốn tắt hàng loạt ở danh sách bên trái!');
+    return;
+  }
+
+  // Lọc các bot đang hoạt động
+  const activeSelected = Array.from(selectedBots).filter(name => {
+    return currentBotsData[name] && currentBotsData[name].state !== 'offline';
+  });
+
+  if (activeSelected.length === 0) {
+    appendLog('[Hệ thống] Không có bot nào đang hoạt động trong số các bot được tích chọn.', 'system');
+    return;
+  }
+
+  appendLog(`[Hệ thống] Đang tắt hàng loạt ${activeSelected.length} bot...`, 'system');
+  activeSelected.forEach(name => {
+    socket.emit('stop-bot-instance', name);
+  });
 });

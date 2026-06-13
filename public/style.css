@@ -712,6 +712,24 @@ input:focus, select:focus {
   color: var(--text-main);
 }
 
+/* Thao tác hàng loạt (Bulk Operations) */
+.bulk-ops-area {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.01);
+}
+.bulk-ops-area input[type="number"] {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: #fff;
+  text-align: center;
+}
+.bulk-ops-area input[type="number"]:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 5px rgba(99, 102, 241, 0.3);
+}
+
 /* Checkboxes inside bot item list */
 .bot-item input[type="checkbox"] {
   width: auto;

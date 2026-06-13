@@ -88,6 +88,19 @@
             <label for="checkbox-select-all">Chọn tất cả bot</label>
           </div>
 
+          <!-- Thao tác hàng loạt (Bulk Operations) -->
+          <div class="bulk-ops-area">
+            <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+              <input type="number" id="bulk-start-delay" placeholder="Trễ (s)" min="0" value="3" style="width: 75px; padding: 8px 6px; font-size: 12px;" title="Khoảng trễ (giây) giữa mỗi lần bật bot tiếp theo">
+              <button type="button" id="btn-bulk-start" class="btn btn-success" style="flex: 1; padding: 8px 6px; font-size: 11px; font-weight: bold; border-radius: 8px;" title="Bật tuần tự các bot đã chọn">
+                <i class="fa-solid fa-play"></i> Bật Hàng Loạt
+              </button>
+              <button type="button" id="btn-bulk-stop" class="btn btn-danger" style="padding: 8px 10px; font-size: 11px; font-weight: bold; border-radius: 8px;" title="Tắt toàn bộ các bot đã chọn">
+                <i class="fa-solid fa-stop"></i> Tắt Hàng Loạt
+              </button>
+            </div>
+          </div>
+
           <!-- Danh sách bot cuộn được -->
           <div class="bots-list-wrapper">
             <div id="bots-list" class="bots-list">
