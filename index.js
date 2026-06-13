@@ -5,6 +5,8 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 const mineflayer = require('mineflayer');
+const dns = require('dns');
+dns.setServers(['1.1.1.1', '8.8.8.8']);
 
 const app = express();
 const server = http.createServer(app);
@@ -15,35 +17,69 @@ const PORT = process.env.PORT || 3000;
 // Path tới tệp cấu hình config.json
 const configPath = path.join(__dirname, 'config.json');
 
+// Mẫu cấu hình mặc định ban đầu
+const defaultConfigTemplate = {
+  host: 'localhost',
+  port: 25565,
+  version: '1.20.4',
+  loginCommand: '/login {password}',
+  registerCommand: '/register {password} {password}',
+  loginDelayMs: 2000,
+  checkClockDelayMs: 5000,
+  autoJoinSub: true,
+  subGuiStepCount: 1,
+  subGuiSlots: [10, 12]
+};
+
 // Đọc cấu hình JSON
 function readConfig() {
   if (!fs.existsSync(configPath)) {
-    const defaultConfig = {
-      server: { host: 'localhost', port: 25565, version: '1.20.4' },
-      global: {
-        loginCommand: '/login {password}',
-        registerCommand: '/register {password} {password}',
-        loginDelayMs: 2000,
-        checkClockDelayMs: 5000,
-        autoJoinSub: true,
-        subGuiSlot: 10
-      },
-      bots: []
+    const initialConfig = {
+      defaults: defaultConfigTemplate,
+      bots: [
+        {
+          username: "AutoBot_1",
+          password: "MatKhauBot123",
+          ...defaultConfigTemplate
+        }
+      ]
     };
-    fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
-    return defaultConfig;
+    fs.writeFileSync(configPath, JSON.stringify(initialConfig, null, 2), 'utf8');
+    return initialConfig;
   }
   try {
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (!cfg.defaults) cfg.defaults = defaultConfigTemplate;
+    if (!cfg.bots) cfg.bots = [];
+    return cfg;
   } catch (e) {
     console.error('Lỗi đọc tệp config.json, khởi tạo lại mặc định:', e.message);
-    return { server: { host: 'localhost', port: 25565, version: '1.20.4' }, global: {}, bots: [] };
+    return { defaults: defaultConfigTemplate, bots: [] };
   }
 }
 
 // Ghi cấu hình JSON
 function writeConfig(config) {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+}
+
+// Lấy cấu hình của một bot cụ thể (nếu thiếu trường sẽ fallback về defaults)
+function getBotConfig(config, username) {
+  const b = config.bots.find(bot => bot.username === username) || {};
+  const defaults = config.defaults || defaultConfigTemplate;
+  
+  return {
+    host: b.host !== undefined ? b.host : defaults.host,
+    port: b.port !== undefined ? b.port : defaults.port,
+    version: b.version !== undefined ? b.version : defaults.version,
+    loginCommand: b.loginCommand !== undefined ? b.loginCommand : defaults.loginCommand,
+    registerCommand: b.registerCommand !== undefined ? b.registerCommand : defaults.registerCommand,
+    loginDelayMs: b.loginDelayMs !== undefined ? b.loginDelayMs : defaults.loginDelayMs,
+    checkClockDelayMs: b.checkClockDelayMs !== undefined ? b.checkClockDelayMs : defaults.checkClockDelayMs,
+    autoJoinSub: b.autoJoinSub !== undefined ? b.autoJoinSub : defaults.autoJoinSub,
+    subGuiStepCount: b.subGuiStepCount !== undefined ? b.subGuiStepCount : defaults.subGuiStepCount,
+    subGuiSlots: b.subGuiSlots !== undefined ? b.subGuiSlots : defaults.subGuiSlots
+  };
 }
 
 // Phục vụ giao diện web tĩnh
@@ -62,7 +98,9 @@ config.bots.forEach(bot => {
     health: null,
     food: null,
     reconnectTimeout: null,
-    loginCheckTimeout: null
+    loginCheckTimeout: null,
+    isAutoJoining: false,
+    currentGuiStep: 0
   };
 });
 
@@ -117,7 +155,9 @@ function getBotsStatusData() {
         bot: null,
         coords: null,
         health: null,
-        food: null
+        food: null,
+        isAutoJoining: false,
+        currentGuiStep: 0
       };
     }
   });
@@ -128,7 +168,8 @@ function getBotsStatusData() {
       state: b.state,
       coords: b.coords,
       health: b.health,
-      food: b.food
+      food: b.food,
+      config: getBotConfig(config, username) // Gửi cấu hình riêng biệt của từng bot
     };
   });
   return statusData;
@@ -149,12 +190,12 @@ function performLoginSequence(username, password, checkAttempt = 1) {
   const activeBot = activeBots[username];
   if (!activeBot || !activeBot.bot || activeBot.state !== 'online') return;
 
-  const config = readConfig();
+  const botConfig = getBotConfig(readConfig(), username);
 
   // Ở lần chạy đầu tiên (checkAttempt === 1), thực hiện gửi lệnh đăng nhập
   if (checkAttempt === 1) {
-    const loginCmd = config.global.loginCommand.replace(/{password}/g, password);
-    const maskedLoginCmd = config.global.loginCommand.replace(/{password}/g, '********');
+    const loginCmd = botConfig.loginCommand.replace(/{password}/g, password);
+    const maskedLoginCmd = botConfig.loginCommand.replace(/{password}/g, '********');
     logToWeb(username, `Đang gửi lệnh đăng nhập: ${maskedLoginCmd}`, 'system');
     activeBot.bot.chat(loginCmd);
   }
@@ -187,7 +228,7 @@ function performLoginSequence(username, password, checkAttempt = 1) {
       logToWeb(username, `Đăng nhập thành công! Phát hiện đồng hồ (clock) trong hotbar.`, 'system');
 
       // Xử lý Tự động chọn cụm qua GUI
-      if (config.global.autoJoinSub) {
+      if (botConfig.autoJoinSub) {
         logToWeb(username, `Chế độ tự động vào cụm đang bật. Đang tiến hành cầm đồng hồ...`, 'system');
         const clockItem = items.find(item => item && item.name === 'clock');
         
@@ -205,34 +246,18 @@ function performLoginSequence(username, password, checkAttempt = 1) {
           setTimeout(() => {
             if (!activeBot.bot || activeBot.state !== 'online') return;
 
-            logToWeb(username, `Đã chuyển sang cầm đồng hồ. Đang kích hoạt sử dụng (chuột phải)...`, 'system');
-
-            // Đăng ký bắt sự kiện mở giao diện GUI
-            activeBot.bot.once('windowOpen', (window) => {
-              const slot = config.global.subGuiSlot !== undefined ? config.global.subGuiSlot : 10;
-              logToWeb(username, `Giao diện chọn cụm đã mở (Window ID: ${window.id}). Đang click vào ô: ${slot}`, 'system');
-
-              // Đợi 1 giây để server load đầy đủ vật phẩm rồi click
-              setTimeout(() => {
-                if (!activeBot.bot || activeBot.state !== 'online') return;
-                activeBot.bot.clickWindow(slot, 0, 0, (clickErr) => {
-                  if (clickErr) {
-                    logToWeb(username, `Lỗi khi click vào ô ${slot}: ${clickErr.message}`, 'error');
-                  } else {
-                    logToWeb(username, `Đã click thành công vào ô ${slot} để chọn cụm!`, 'system');
-                    try {
-                      activeBot.bot.closeWindow(window);
-                    } catch (e) {}
-                  }
-                });
-              }, 1000);
-            });
+            logToWeb(username, `Đã chuyển sang cầm đồng hồ. Kích hoạt trạng thái tự động chọn cụm...`, 'system');
+            
+            // Kích hoạt trạng thái tự động chọn cụm
+            activeBot.isAutoJoining = true;
+            activeBot.currentGuiStep = 0;
 
             // Kích hoạt vật phẩm trên tay (chuột phải)
             try {
               activeBot.bot.activateItem();
             } catch (activateErr) {
               logToWeb(username, `Lỗi kích hoạt vật phẩm: ${activateErr.message}`, 'error');
+              activeBot.isAutoJoining = false;
             }
           }, 200);
 
@@ -246,8 +271,8 @@ function performLoginSequence(username, password, checkAttempt = 1) {
       if (checkAttempt === 1) {
         logToWeb(username, `Không tìm thấy đồng hồ ở hotbar sau 5 giây! Đang tiến hành đăng ký...`, 'warning');
         
-        const registerCmd = config.global.registerCommand.replace(/{password}/g, password);
-        const maskedRegisterCmd = config.global.registerCommand.replace(/{password}/g, '********');
+        const registerCmd = botConfig.registerCommand.replace(/{password}/g, password);
+        const maskedRegisterCmd = botConfig.registerCommand.replace(/{password}/g, '********');
 
         logToWeb(username, `Đang gửi lệnh đăng ký: ${maskedRegisterCmd}`, 'system');
         activeBot.bot.chat(registerCmd);
@@ -255,8 +280,8 @@ function performLoginSequence(username, password, checkAttempt = 1) {
         // Đợi 2 giây gửi lại lệnh đăng nhập
         setTimeout(() => {
           if (!activeBot.bot || activeBot.state !== 'online') return;
-          const loginCmd = config.global.loginCommand.replace(/{password}/g, password);
-          const maskedLoginCmd = config.global.loginCommand.replace(/{password}/g, '********');
+          const loginCmd = botConfig.loginCommand.replace(/{password}/g, password);
+          const maskedLoginCmd = botConfig.loginCommand.replace(/{password}/g, '********');
           logToWeb(username, `Gửi lại lệnh đăng nhập sau khi đăng ký: ${maskedLoginCmd}`, 'system');
           activeBot.bot.chat(loginCmd);
 
@@ -270,12 +295,32 @@ function performLoginSequence(username, password, checkAttempt = 1) {
         logToWeb(username, `Đã kiểm tra 3 lần vẫn không thấy đồng hồ ở hotbar. Dừng chu kỳ kiểm tra đăng nhập.`, 'error');
       }
     }
-  }, config.global.checkClockDelayMs);
+  }, botConfig.checkClockDelayMs);
+}
+
+// Helper: Phân giải bản ghi SRV để lấy IP/Port thực tế của Minecraft server (như game client)
+function resolveMinecraftServer(host, port, callback) {
+  const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
+  if (port !== 25565 || isIP || host === 'localhost' || host === '127.0.0.1') {
+    return callback(host, port);
+  }
+
+  dns.resolveSrv(`_minecraft._tcp.${host}`, (err, addresses) => {
+    if (!err && addresses && addresses.length > 0) {
+      const sorted = addresses.sort((a, b) => a.priority - b.priority || b.weight - a.weight);
+      const srv = sorted[0];
+      console.log(`[DNS] Đã phân giải SRV cho ${host} -> ${srv.name}:${srv.port}`);
+      return callback(srv.name, srv.port);
+    }
+    // Fallback nếu không có SRV
+    callback(host, port);
+  });
 }
 
 // Hàm khởi chạy bot
 function startBotInstance(username, password) {
   const config = readConfig();
+  const botConfig = getBotConfig(config, username);
   
   // Đảm bảo bot được định nghĩa trong map activeBots
   if (!activeBots[username]) {
@@ -284,7 +329,9 @@ function startBotInstance(username, password) {
       bot: null,
       coords: null,
       health: null,
-      food: null
+      food: null,
+      isAutoJoining: false,
+      currentGuiStep: 0
     };
   }
 
@@ -296,126 +343,183 @@ function startBotInstance(username, password) {
   }
 
   activeBot.state = 'connecting';
+  activeBot.isAutoJoining = false;
+  activeBot.currentGuiStep = 0;
+  
   emitBotsUpdate();
-  logToWeb(username, `Đang kết nối tới ${config.server.host}:${config.server.port}...`, 'system');
+  
+  // Thực hiện phân giải SRV trước khi kết nối
+  resolveMinecraftServer(botConfig.host, botConfig.port, (resolvedHost, resolvedPort) => {
+    // Đảm bảo người dùng không ấn Tắt bot trong lúc DNS đang phân giải
+    if (activeBot.state !== 'connecting') return;
+    
+    logToWeb(username, `Đang kết nối tới ${resolvedHost}:${resolvedPort}...`, 'system');
 
-  try {
-    const bot = mineflayer.createBot({
-      host: config.server.host,
-      port: config.server.port,
-      username: username,
-      version: config.server.version === 'false' ? false : config.server.version
-    });
-
-    activeBot.bot = bot;
-
-    // Đăng ký các sự kiện tương tác GUI Window cho bot
-    bot.on('windowOpen', (window) => {
-      if (window.id === 0) return; // Bỏ qua hòm đồ cá nhân
-
-      const titleText = cleanWindowTitle(window.title);
-      logToWeb(username, `Giao diện GUI '${titleText}' được mở (ID: ${window.id}, Slots: ${window.slots.length})`, 'system');
-
-      // Tạo mảng danh sách vật phẩm gửi lên client
-      const items = window.slots.map((item, index) => {
-        if (!item) return null;
-        return {
-          slot: index,
-          name: item.name,
-          count: item.count
-        };
-      }).filter(Boolean);
-
-      io.emit('gui-open', {
-        botname: username,
-        title: titleText,
-        id: window.id,
-        slotsCount: window.slots.length,
-        items: items
+    try {
+      const bot = mineflayer.createBot({
+        host: resolvedHost,
+        port: resolvedPort,
+        username: username,
+        version: botConfig.version === 'false' ? false : botConfig.version
       });
 
-      // Lắng nghe sự kiện cập nhật vật phẩm trong GUI
-      window.on('updateSlot', (slotIndex, oldItem, newItem) => {
-        io.emit('gui-update', {
+      activeBot.bot = bot;
+
+      // Đăng ký các sự kiện tương tác GUI Window cho bot
+      bot.on('windowOpen', (window) => {
+        if (window.id === 0) return; // Bỏ qua hòm đồ cá nhân
+
+        const titleText = cleanWindowTitle(window.title);
+        logToWeb(username, `Giao diện GUI '${titleText}' được mở (ID: ${window.id}, Slots: ${window.slots.length})`, 'system');
+
+        // Tạo mảng danh sách vật phẩm gửi lên client
+        const items = window.slots.map((item, index) => {
+          if (!item) return null;
+          return {
+            slot: index,
+            name: item.name,
+            count: item.count
+          };
+        }).filter(Boolean);
+
+        io.emit('gui-open', {
           botname: username,
+          title: titleText,
           id: window.id,
-          slotIndex: slotIndex,
-          item: newItem ? { name: newItem.name, count: newItem.count } : null
+          slotsCount: window.slots.length,
+          items: items
+        });
+
+        // Lắng nghe sự kiện cập nhật vật phẩm trong GUI
+        window.on('updateSlot', (slotIndex, oldItem, newItem) => {
+          io.emit('gui-update', {
+            botname: username,
+            id: window.id,
+            slotIndex: slotIndex,
+            item: newItem ? { name: newItem.name, count: newItem.count } : null
+          });
+        });
+
+        // Logic Tự động click GUI theo bước rương
+        if (activeBot.isAutoJoining) {
+          const freshConfig = getBotConfig(readConfig(), username);
+          const slots = freshConfig.subGuiSlots || [10, 12];
+          const stepCount = freshConfig.subGuiStepCount || 1;
+
+          if (activeBot.currentGuiStep === 0) {
+            const targetSlot = slots[0] !== undefined ? slots[0] : 10;
+            logToWeb(username, `[Auto-Join] Phát hiện rương thứ nhất. Đang click vào ô: ${targetSlot}`, 'system');
+            
+            setTimeout(() => {
+              if (!activeBot.bot || activeBot.state !== 'online') return;
+              activeBot.bot.clickWindow(targetSlot, 0, 0, (clickErr) => {
+                if (clickErr) {
+                  logToWeb(username, `[Auto-Join] Lỗi click rương 1: ${clickErr.message}`, 'error');
+                  activeBot.isAutoJoining = false;
+                  activeBot.currentGuiStep = 0;
+                } else {
+                  logToWeb(username, `[Auto-Join] Đã click rương 1 thành công.`, 'system');
+                  if (stepCount >= 2) {
+                    activeBot.currentGuiStep = 1;
+                  } else {
+                    activeBot.isAutoJoining = false;
+                    activeBot.currentGuiStep = 0;
+                  }
+                }
+              });
+            }, 500);
+          } else if (activeBot.currentGuiStep === 1) {
+            const targetSlot = slots[1] !== undefined ? slots[1] : 12;
+            logToWeb(username, `[Auto-Join] Phát hiện rương thứ hai. Đang click vào ô: ${targetSlot}`, 'system');
+
+            setTimeout(() => {
+              if (!activeBot.bot || activeBot.state !== 'online') return;
+              activeBot.bot.clickWindow(targetSlot, 0, 0, (clickErr) => {
+                if (clickErr) {
+                  logToWeb(username, `[Auto-Join] Lỗi click rương 2: ${clickErr.message}`, 'error');
+                } else {
+                  logToWeb(username, `[Auto-Join] Đã click rương 2 thành công. Tự động vào cụm hoàn tất.`, 'system');
+                }
+                activeBot.isAutoJoining = false;
+                activeBot.currentGuiStep = 0;
+              });
+            }, 500);
+          }
+        }
+      });
+
+      bot.on('windowClose', (window) => {
+        if (window.id === 0) return;
+        logToWeb(username, `Giao diện GUI (ID: ${window.id}) đã đóng.`, 'system');
+        io.emit('gui-close', {
+          botname: username,
+          id: window.id
         });
       });
-    });
 
-    bot.on('windowClose', (window) => {
-      if (window.id === 0) return;
-      logToWeb(username, `Giao diện GUI (ID: ${window.id}) đã đóng.`, 'system');
-      io.emit('gui-close', {
-        botname: username,
-        id: window.id
+      // Khi bot spawn vào server
+      bot.once('spawn', () => {
+        activeBot.state = 'online';
+        emitBotsUpdate();
+        logToWeb(username, `Bot '${bot.username}' đã spawn vào server thành công!`, 'system');
+
+        // Bắt đầu chuỗi đăng nhập và quét hotbar kiểm tra đồng hồ
+        performLoginSequence(username, password, 1);
       });
-    });
 
-    // Khi bot spawn vào server
-    bot.once('spawn', () => {
-      activeBot.state = 'online';
+      // Khi nhận chat
+      bot.on('chat', (sender, message) => {
+        if (sender === bot.username) return;
+        logToWeb(username, `<${sender}> ${message}`, 'chat');
+      });
+
+      // Khi nhận tin nhắn hệ thống
+      bot.on('message', (jsonMsg) => {
+        const message = jsonMsg.toString().trim();
+        if (!message) return;
+        logToWeb(username, message, 'server');
+      });
+
+      // Khi bot bị kick
+      bot.on('kicked', (reason) => {
+        logToWeb(username, `Bot bị Kick khỏi server. Lý do: ${reason}`, 'warning');
+      });
+
+      // Khi gặp lỗi kết nối
+      bot.on('error', (err) => {
+        logToWeb(username, `Lỗi kết nối: ${err.message || err}`, 'error');
+      });
+
+      // Khi đóng kết nối
+      bot.on('end', () => {
+        logToWeb(username, `Bot đã ngắt kết nối.`, 'system');
+        
+        if (activeBot.loginCheckTimeout) clearTimeout(activeBot.loginCheckTimeout);
+        activeBot.bot = null;
+
+        // Nếu không phải tắt thủ công thì tự động kết nối lại
+        if (activeBot.state !== 'offline') {
+          activeBot.state = 'connecting';
+          emitBotsUpdate();
+          
+          const reconnectDelay = parseInt(process.env.RECONNECT_DELAY_MS || '10000', 10);
+          logToWeb(username, `Sẽ tự động kết nối lại sau ${reconnectDelay / 1000} giây...`, 'system');
+          
+          if (activeBot.reconnectTimeout) clearTimeout(activeBot.reconnectTimeout);
+          activeBot.reconnectTimeout = setTimeout(() => {
+            startBotInstance(username, password);
+          }, reconnectDelay);
+        } else {
+          emitBotsUpdate();
+        }
+      });
+
+    } catch (err) {
+      logToWeb(username, `Lỗi khởi tạo bot: ${err.message}`, 'error');
+      activeBot.state = 'offline';
       emitBotsUpdate();
-      logToWeb(username, `Bot '${bot.username}' đã spawn vào server thành công!`, 'system');
-
-      // Bắt đầu chuỗi đăng nhập và quét hotbar kiểm tra đồng hồ
-      performLoginSequence(username, password, 1);
-    });
-
-    // Khi nhận chat
-    bot.on('chat', (sender, message) => {
-      if (sender === bot.username) return;
-      logToWeb(username, `<${sender}> ${message}`, 'chat');
-    });
-
-    // Khi nhận tin nhắn hệ thống
-    bot.on('message', (jsonMsg) => {
-      const message = jsonMsg.toString().trim();
-      if (!message) return;
-      logToWeb(username, message, 'server');
-    });
-
-    // Khi bot bị kick
-    bot.on('kicked', (reason) => {
-      logToWeb(username, `Bot bị Kick khỏi server. Lý do: ${reason}`, 'warning');
-    });
-
-    // Khi gặp lỗi kết nối
-    bot.on('error', (err) => {
-      logToWeb(username, `Lỗi kết nối: ${err.message || err}`, 'error');
-    });
-
-    // Khi đóng kết nối
-    bot.on('end', () => {
-      logToWeb(username, `Bot đã ngắt kết nối.`, 'system');
-      
-      if (activeBot.loginCheckTimeout) clearTimeout(activeBot.loginCheckTimeout);
-      activeBot.bot = null;
-
-      // Nếu không phải tắt thủ công thì tự động kết nối lại
-      if (activeBot.state !== 'offline') {
-        activeBot.state = 'connecting';
-        emitBotsUpdate();
-        
-        const reconnectDelay = parseInt(process.env.RECONNECT_DELAY_MS || '10000', 10);
-        logToWeb(username, `Sẽ tự động kết nối lại sau ${reconnectDelay / 1000} giây...`, 'system');
-        
-        if (activeBot.reconnectTimeout) clearTimeout(activeBot.reconnectTimeout);
-        activeBot.reconnectTimeout = setTimeout(() => {
-          startBotInstance(username, password);
-        }, reconnectDelay);
-      } else {
-        emitBotsUpdate();
-      }
-    });
-
-  } catch (err) {
-    logToWeb(username, `Lỗi khởi tạo bot: ${err.message}`, 'error');
-    activeBot.state = 'offline';
-    emitBotsUpdate();
-  }
+    }
+  });
 }
 
 // Hàm tắt bot
@@ -425,6 +529,8 @@ function stopBotInstance(username) {
 
   logToWeb(username, `Đang chủ động tắt bot...`, 'system');
   activeBot.state = 'offline';
+  activeBot.isAutoJoining = false;
+  activeBot.currentGuiStep = 0;
 
   if (activeBot.reconnectTimeout) clearTimeout(activeBot.reconnectTimeout);
   if (activeBot.loginCheckTimeout) clearTimeout(activeBot.loginCheckTimeout);
@@ -469,23 +575,43 @@ io.on('connection', (socket) => {
   socket.emit('current-config', readConfig());
   sendBotsUpdateToSocket(socket);
 
-  // Lưu cấu hình chung
-  socket.on('save-global-config', (newConfig, callback) => {
+  // Lưu cấu hình riêng cho từng bot hoặc chỉnh sửa hàng loạt các bot được chọn
+  socket.on('save-bots-config', (data, callback) => {
     try {
-      const currentConfig = readConfig();
-      currentConfig.server = newConfig.server;
-      currentConfig.global = newConfig.global;
-      writeConfig(currentConfig);
+      const { usernames, config: newConfig } = data;
+      if (!usernames || usernames.length === 0) {
+        callback({ success: false, message: 'Không có bot nào được chọn để lưu cấu hình!' });
+        return;
+      }
       
+      const config = readConfig();
+      usernames.forEach(name => {
+        const bot = config.bots.find(b => b.username === name);
+        if (bot) {
+          bot.host = newConfig.host;
+          bot.port = newConfig.port;
+          bot.version = newConfig.version;
+          bot.loginCommand = newConfig.loginCommand;
+          bot.registerCommand = newConfig.registerCommand;
+          bot.loginDelayMs = newConfig.loginDelayMs;
+          bot.checkClockDelayMs = newConfig.checkClockDelayMs;
+          bot.autoJoinSub = newConfig.autoJoinSub;
+          bot.subGuiStepCount = newConfig.subGuiStepCount;
+          bot.subGuiSlots = newConfig.subGuiSlots;
+        }
+      });
+      
+      writeConfig(config);
       callback({ success: true });
-      logToWeb('', `Đã lưu cấu hình chung mới thành công!`, 'system');
+      logToWeb('', `Đã cập nhật cấu hình thành công cho ${usernames.length} bot.`, 'system');
+      emitBotsUpdate();
     } catch (err) {
       callback({ success: false, message: err.message });
-      logToWeb('', `Lỗi lưu cấu hình: ${err.message}`, 'error');
+      logToWeb('', `Lỗi khi lưu cấu hình: ${err.message}`, 'error');
     }
   });
 
-  // Thêm Bot mới
+  // Thêm 1 Bot mới
   socket.on('add-bot', (botData, callback) => {
     try {
       const config = readConfig();
@@ -495,7 +621,15 @@ io.on('connection', (socket) => {
         return;
       }
       
-      config.bots.push(botData);
+      // Khởi tạo bot mới với các giá trị cấu hình mặc định (defaults)
+      const defaults = config.defaults || defaultConfigTemplate;
+      const newBot = {
+        username: botData.username,
+        password: botData.password,
+        ...defaults
+      };
+      
+      config.bots.push(newBot);
       writeConfig(config);
       
       activeBots[botData.username] = {
@@ -505,12 +639,60 @@ io.on('connection', (socket) => {
         health: null,
         food: null,
         reconnectTimeout: null,
-        loginCheckTimeout: null
+        loginCheckTimeout: null,
+        isAutoJoining: false,
+        currentGuiStep: 0
       };
 
       callback({ success: true });
       emitBotsUpdate();
       logToWeb(botData.username, `Đã được thêm vào hệ thống quản lý.`, 'system');
+    } catch (err) {
+      callback({ success: false, message: err.message });
+    }
+  });
+
+  // Thêm nhiều Bot hàng loạt cùng 1 lúc
+  socket.on('add-bulk-bots', (data, callback) => {
+    try {
+      const { prefix, count, password } = data;
+      const config = readConfig();
+      const defaults = config.defaults || defaultConfigTemplate;
+      
+      let addedCount = 0;
+      for (let i = 0; i < count; i++) {
+        const username = `${prefix}_${i}`;
+        const exists = config.bots.some(b => b.username === username);
+        if (!exists) {
+          config.bots.push({
+            username,
+            password,
+            ...defaults
+          });
+          
+          activeBots[username] = {
+            state: 'offline',
+            bot: null,
+            coords: null,
+            health: null,
+            food: null,
+            reconnectTimeout: null,
+            loginCheckTimeout: null,
+            isAutoJoining: false,
+            currentGuiStep: 0
+          };
+          addedCount++;
+        }
+      }
+      
+      if (addedCount > 0) {
+        writeConfig(config);
+        callback({ success: true });
+        emitBotsUpdate();
+        logToWeb('', `Đã thêm thành công hàng loạt ${addedCount} bot (tiền tố: ${prefix}).`, 'system');
+      } else {
+        callback({ success: false, message: 'Tất cả các bot này đã tồn tại sẵn trong hệ thống!' });
+      }
     } catch (err) {
       callback({ success: false, message: err.message });
     }
