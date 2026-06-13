@@ -275,8 +275,40 @@
             <button type="submit" id="btn-send-chat" class="btn btn-primary" disabled><i class="fa-solid fa-paper-plane"></i></button>
           </form>
         </div>
-      </section>
     </main>
+
+    <!-- Bảng Thống Kê Tài Sản Bot (Money Statistics Table) -->
+    <section class="card money-stats-card" style="margin-top: 24px;">
+      <div class="card-header">
+        <i class="fa-solid fa-coins header-icon" style="color: var(--color-warning);"></i>
+        <h2>Bảng Thống Kê Tài Sản Bot</h2>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="money-table" id="money-table">
+            <thead>
+              <tr>
+                <th>Tên Bot</th>
+                <th>Trạng Thái</th>
+                <th>Tọa Độ</th>
+                <th>Số Tiền (Scoreboard)</th>
+              </tr>
+            </thead>
+            <tbody id="money-table-body">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">Không có bot nào online để thống kê.</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="3" style="text-align: right; font-weight: bold; color: var(--color-warning);">Tổng Cộng Tiền:</td>
+                <td id="money-total-value" style="font-weight: bold; color: var(--color-success); font-size: 16px;">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- Client-side Socket.io -->

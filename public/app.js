@@ -53,6 +53,10 @@ const btnBulkStart = document.getElementById('btn-bulk-start');
 const btnBulkStop = document.getElementById('btn-bulk-stop');
 const bulkStartDelayInput = document.getElementById('bulk-start-delay');
 
+// DOM Elements - Money Table
+const moneyTableBody = document.getElementById('money-table-body');
+const moneyTotalValue = document.getElementById('money-total-value');
+
 // DOM Elements - Header Summary
 const countOnline = document.getElementById('count-online');
 const countConnecting = document.getElementById('count-connecting');
@@ -142,6 +146,7 @@ socket.on('bots-update', (bots) => {
   updateConsoleFilters(bots);
   updateChatSenders(bots);
   onSelectionChanged(); // Cập nhật lại trạng thái form cấu hình
+  updateMoneyTable(bots); // Cập nhật bảng thống kê tiền
 });
 
 // Render danh sách bot kèm Checkbox
@@ -168,9 +173,6 @@ function renderBotsList(bots) {
     let statusText = bot.state.toUpperCase();
     if (bot.state === 'online' && bot.coords) {
       statusText = `X: ${Math.round(bot.coords.x)}, Y: ${Math.round(bot.coords.y)}, Z: ${Math.round(bot.coords.z)}`;
-      if (bot.money !== undefined && bot.money !== null) {
-        statusText += ` | 💰: ${bot.money}`;
-      }
     }
     
     const isChecked = selectedBots.has(name) ? 'checked' : '';
@@ -746,3 +748,70 @@ btnBulkStop.addEventListener('click', () => {
     socket.emit('stop-bot-instance', name);
   });
 });
+
+// Cập nhật bảng thống kê số tiền của các bot đang online
+function updateMoneyTable(bots) {
+  if (!moneyTableBody || !moneyTotalValue) return;
+  moneyTableBody.innerHTML = '';
+  
+  const onlineBots = Object.keys(bots).filter(name => bots[name].state === 'online');
+  
+  if (onlineBots.length === 0) {
+    moneyTableBody.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align: center; color: var(--text-muted);">Không có bot nào online để thống kê.</td>
+      </tr>
+    `;
+    moneyTotalValue.textContent = '0';
+    return;
+  }
+  
+  let totalSum = 0;
+  
+  onlineBots.forEach(name => {
+    const bot = bots[name];
+    const moneyStr = bot.money !== undefined && bot.money !== null ? bot.money : 'Đang đọc...';
+    
+    // Cộng dồn tổng tiền
+    if (bot.money !== undefined && bot.money !== null) {
+      totalSum += parseFormattedNumber(bot.money);
+    }
+    
+    const coordsText = bot.coords ? `X: ${Math.round(bot.coords.x)}, Y: ${Math.round(bot.coords.y)}, Z: ${Math.round(bot.coords.z)}` : '-';
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-weight: bold; color: var(--text-main);">${name}</td>
+      <td>
+        <span class="status-dot online" style="display: inline-block; vertical-align: middle; margin-right: 6px;"></span>
+        Online
+      </td>
+      <td class="code-font" style="font-size: 13px; color: var(--text-muted);">${coordsText}</td>
+      <td style="font-weight: bold; color: var(--color-warning); font-size: 15px;">💰 ${moneyStr}</td>
+    `;
+    moneyTableBody.appendChild(tr);
+  });
+  
+  // Hiển thị tổng tiền format đẹp
+  moneyTotalValue.textContent = totalSum.toLocaleString();
+}
+
+// Phân tích tiền dạng chuỗi sang số thực hỗ trợ các kiểu dấu phẩy/chấm khác nhau
+function parseFormattedNumber(str) {
+  if (!str) return 0;
+  let clean = str.toString().replace(/\s+/g, '');
+  if (clean.includes(',') && clean.includes('.')) {
+    clean = clean.replace(/,/g, '');
+  } else if (clean.includes(',')) {
+    if (/,([0-9]{3})$/.test(clean)) {
+      clean = clean.replace(/,/g, '');
+    } else {
+      clean = clean.replace(/,/g, '.');
+    }
+  } else if (clean.includes('.')) {
+    if (/\.([0-9]{3})$/.test(clean)) {
+      clean = clean.replace(/\./g, '');
+    }
+  }
+  return parseFloat(clean) || 0;
+}
