@@ -30,7 +30,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_1",
@@ -47,7 +54,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_2",
@@ -64,7 +78,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_3",
@@ -81,7 +102,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_4",
@@ -98,7 +126,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_5",
@@ -115,7 +150,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_6",
@@ -132,7 +174,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_7",
@@ -149,7 +198,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_8",
@@ -166,7 +222,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_9",
@@ -183,7 +246,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_10",
@@ -200,7 +270,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_11",
@@ -217,7 +294,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_12",
@@ -234,7 +318,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_13",
@@ -251,7 +342,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_14",
@@ -268,7 +366,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_15",
@@ -285,7 +390,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_16",
@@ -302,7 +414,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_17",
@@ -319,7 +438,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_18",
@@ -336,7 +462,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_19",
@@ -353,7 +486,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_20",
@@ -370,7 +510,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_21",
@@ -387,7 +534,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_22",
@@ -404,7 +558,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_23",
@@ -421,7 +582,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_24",
@@ -438,7 +606,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_25",
@@ -455,7 +630,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_26",
@@ -472,7 +654,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_27",
@@ -489,7 +678,14 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee_28",
@@ -506,12 +702,19 @@
       "subGuiSlots": [
         22,
         14
-      ]
+      ],
+      "macroEnabled": true,
+      "macroKeyword": "Gói default",
+      "macroCommand": "/warp afk",
+      "macroMoveEnabled": true,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 5000
     },
     {
       "username": "Yukee1",
       "password": "kenduzz2k6",
-      "host": "localhost",
+      "host": "kingmc.vn",
       "port": 25565,
       "version": "1.20.4",
       "loginCommand": "/login {password}",
@@ -521,9 +724,38 @@
       "autoJoinSub": true,
       "subGuiStepCount": 1,
       "subGuiSlots": [
-        10,
-        12
-      ]
+        24
+      ],
+      "macroEnabled": false,
+      "macroKeyword": "",
+      "macroCommand": "",
+      "macroMoveEnabled": false,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 2000
+    },
+    {
+      "username": "Yukee2",
+      "password": "kenduzz2k6",
+      "host": "kingmc.vn",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 1,
+      "subGuiSlots": [
+        24
+      ],
+      "macroEnabled": false,
+      "macroKeyword": "",
+      "macroCommand": "",
+      "macroMoveEnabled": false,
+      "macroMoveDelayMs": 1000,
+      "macroMoveDirection": "forward",
+      "macroMoveDurationMs": 2000
     }
   ]
 }

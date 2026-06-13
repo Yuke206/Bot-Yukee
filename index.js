@@ -214,15 +214,34 @@ function performLoginSequence(username, password, checkAttempt = 1) {
 
   const botConfig = getBotConfig(readConfig(), username);
 
-  // Ở lần chạy đầu tiên (checkAttempt === 1), thực hiện gửi lệnh đăng nhập
+  // Ở lần chạy đầu tiên (checkAttempt === 1), thực hiện gửi lệnh đăng nhập sau thời gian trễ (loginDelayMs)
   if (checkAttempt === 1) {
     const loginCmd = botConfig.loginCommand.replace(/{password}/g, password);
     const maskedLoginCmd = botConfig.loginCommand.replace(/{password}/g, '********');
-    logToWeb(username, `Đang gửi lệnh đăng nhập: ${maskedLoginCmd}`, 'system');
-    activeBot.bot.chat(loginCmd);
-  }
+    const delay = botConfig.loginDelayMs !== undefined ? botConfig.loginDelayMs : 2000;
+    
+    logToWeb(username, `Đang chờ ${delay}ms trước khi gửi lệnh đăng nhập...`, 'system');
+    
+    setTimeout(() => {
+      if (!activeBot.bot || activeBot.state !== 'online') return;
+      logToWeb(username, `Đang gửi lệnh đăng nhập: ${maskedLoginCmd}`, 'system');
+      activeBot.bot.chat(loginCmd);
 
-  // Thiết lập kiểm tra đồng hồ và tự đăng ký sau thời gian cấu hình
+      // Bắt đầu đếm ngược kiểm tra đồng hồ/đăng ký sau khi đã gửi lệnh đăng nhập
+      scheduleCheckClock(username, password, 1);
+    }, delay);
+  } else {
+    scheduleCheckClock(username, password, checkAttempt);
+  }
+}
+
+// Hàm phụ để kiểm tra đồng hồ và tự đăng ký sau khoảng trễ (checkClockDelayMs)
+function scheduleCheckClock(username, password, checkAttempt) {
+  const activeBot = activeBots[username];
+  if (!activeBot || !activeBot.bot || activeBot.state !== 'online') return;
+
+  const botConfig = getBotConfig(readConfig(), username);
+
   if (activeBot.loginCheckTimeout) clearTimeout(activeBot.loginCheckTimeout);
   activeBot.loginCheckTimeout = setTimeout(() => {
     if (!activeBot.bot || activeBot.state !== 'online') return;
@@ -291,7 +310,7 @@ function performLoginSequence(username, password, checkAttempt = 1) {
     } else {
       // Không thấy đồng hồ
       if (checkAttempt === 1) {
-        logToWeb(username, `Không tìm thấy đồng hồ ở hotbar sau 5 giây! Đang tiến hành đăng ký...`, 'warning');
+        logToWeb(username, `Không tìm thấy đồng hồ ở hotbar sau ${botConfig.checkClockDelayMs}ms! Đang tiến hành đăng ký...`, 'warning');
         
         const registerCmd = botConfig.registerCommand.replace(/{password}/g, password);
         const maskedRegisterCmd = botConfig.registerCommand.replace(/{password}/g, '********');
@@ -307,11 +326,11 @@ function performLoginSequence(username, password, checkAttempt = 1) {
           logToWeb(username, `Gửi lại lệnh đăng nhập sau khi đăng ký: ${maskedLoginCmd}`, 'system');
           activeBot.bot.chat(loginCmd);
 
-          // Kích hoạt quét hotbar lần 2 sau 5 giây nữa
+          // Kích hoạt quét hotbar lần 2 sau checkClockDelayMs nữa
           performLoginSequence(username, password, 2);
         }, 2000);
       } else if (checkAttempt === 2) {
-        logToWeb(username, `Lần 2 vẫn không thấy đồng hồ. Đang chờ thêm 5s để quét lần cuối (Lần 3)...`, 'warning');
+        logToWeb(username, `Lần 2 vẫn không thấy đồng hồ. Đang chờ thêm ${botConfig.checkClockDelayMs}ms để quét lần cuối (Lần 3)...`, 'warning');
         performLoginSequence(username, password, 3);
       } else {
         logToWeb(username, `Đã kiểm tra 3 lần vẫn không thấy đồng hồ ở hotbar. Dừng chu kỳ kiểm tra đăng nhập.`, 'error');
@@ -564,7 +583,8 @@ function startBotInstance(username, password) {
 
       // Khi bot bị kick
       bot.on('kicked', (reason) => {
-        logToWeb(username, `Bot bị Kick khỏi server. Lý do: ${reason}`, 'warning');
+        const cleanReason = cleanWindowTitle(reason);
+        logToWeb(username, `Bot bị Kick khỏi server. Lý do: ${cleanReason}`, 'warning');
       });
 
       // Khi gặp lỗi kết nối
