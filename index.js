@@ -130,6 +130,31 @@ function cleanMinecraftChat(chat) {
   if (!chat) return '';
   if (typeof chat === 'string') return chat;
   if (typeof chat === 'object') {
+    // Nếu là NBT compound (ví dụ từ packet kick)
+    if (chat.type === 'compound' && chat.value) {
+      let result = '';
+      const val = chat.value;
+      if (val.text && val.text.value !== undefined) {
+        result += val.text.value;
+      }
+      if (val.translate && val.translate.value !== undefined) {
+        result += val.translate.value;
+      }
+      if (val.extra && val.extra.value) {
+        const extraVal = val.extra.value;
+        if (extraVal.value && Array.isArray(extraVal.value)) {
+          extraVal.value.forEach(item => {
+            result += cleanMinecraftChat(item);
+          });
+        } else if (Array.isArray(extraVal)) {
+          extraVal.forEach(item => {
+            result += cleanMinecraftChat(item);
+          });
+        }
+      }
+      if (result.trim()) return result.trim();
+    }
+
     // Nếu có hàm toString tùy biến (như ChatMessage của Mineflayer)
     if (typeof chat.toString === 'function') {
       const str = chat.toString();
