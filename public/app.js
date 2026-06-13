@@ -15,6 +15,18 @@ const slot1Container = document.getElementById('slot-1-container');
 const slot2Container = document.getElementById('slot-2-container');
 const subGuiSlot1Input = document.getElementById('sub-gui-slot-1');
 const subGuiSlot2Input = document.getElementById('sub-gui-slot-2');
+
+// Chat Macro DOM Elements
+const macroEnabledCheckbox = document.getElementById('macro-enabled');
+const macroConfigGroup = document.getElementById('macro-config-group');
+const macroKeywordInput = document.getElementById('macro-keyword');
+const macroCommandInput = document.getElementById('macro-command');
+const macroMoveEnabledCheckbox = document.getElementById('macro-move-enabled');
+const macroMoveConfigGroup = document.getElementById('macro-move-config-group');
+const macroMoveDelayInput = document.getElementById('macro-move-delay');
+const macroMoveDirectionSelect = document.getElementById('macro-move-direction');
+const macroMoveDurationInput = document.getElementById('macro-move-duration');
+
 const configForm = document.getElementById('config-form');
 const configTitle = document.getElementById('config-title');
 const configDisabledMsg = document.getElementById('config-disabled-msg');
@@ -88,6 +100,15 @@ subGuiStepCountSelect.addEventListener('change', () => {
   } else {
     slot2Container.style.display = 'none';
   }
+});
+
+// Toggle Chat Macro config panels
+macroEnabledCheckbox.addEventListener('change', () => {
+  macroConfigGroup.style.display = macroEnabledCheckbox.checked ? 'block' : 'none';
+});
+
+macroMoveEnabledCheckbox.addEventListener('change', () => {
+  macroMoveConfigGroup.style.display = macroMoveEnabledCheckbox.checked ? 'block' : 'none';
 });
 
 // 1. Nhận cấu hình mặc định ban đầu (Optional, server gửi để giữ tính tương thích)
@@ -266,6 +287,15 @@ function onSelectionChanged() {
       const slots = botConfig.subGuiSlots || [10, 12];
       subGuiSlot1Input.value = slots[0] !== undefined ? slots[0] : 10;
       subGuiSlot2Input.value = slots[1] !== undefined ? slots[1] : 12;
+
+      // Điền cấu hình macro
+      macroEnabledCheckbox.checked = botConfig.macroEnabled || false;
+      macroKeywordInput.value = botConfig.macroKeyword || '';
+      macroCommandInput.value = botConfig.macroCommand || '';
+      macroMoveEnabledCheckbox.checked = botConfig.macroMoveEnabled || false;
+      macroMoveDelayInput.value = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
+      macroMoveDirectionSelect.value = botConfig.macroMoveDirection || 'forward';
+      macroMoveDurationInput.value = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
     }
   } else {
     // Chọn nhiều bot -> cho phép điền đè cấu hình (sử dụng bot đầu tiên làm bản mẫu)
@@ -287,12 +317,23 @@ function onSelectionChanged() {
       const slots = botConfig.subGuiSlots || [10, 12];
       subGuiSlot1Input.value = slots[0] !== undefined ? slots[0] : 10;
       subGuiSlot2Input.value = slots[1] !== undefined ? slots[1] : 12;
+
+      // Điền cấu hình macro
+      macroEnabledCheckbox.checked = botConfig.macroEnabled || false;
+      macroKeywordInput.value = botConfig.macroKeyword || '';
+      macroCommandInput.value = botConfig.macroCommand || '';
+      macroMoveEnabledCheckbox.checked = botConfig.macroMoveEnabled || false;
+      macroMoveDelayInput.value = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
+      macroMoveDirectionSelect.value = botConfig.macroMoveDirection || 'forward';
+      macroMoveDurationInput.value = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
     }
   }
   
   // Kích hoạt các sự kiện thay đổi hiển thị
   autoJoinSubCheckbox.dispatchEvent(new Event('change'));
   subGuiStepCountSelect.dispatchEvent(new Event('change'));
+  macroEnabledCheckbox.dispatchEvent(new Event('change'));
+  macroMoveEnabledCheckbox.dispatchEvent(new Event('change'));
 }
 
 // Xử lý gửi Cấu hình cho các Bot được chọn
@@ -320,7 +361,14 @@ configForm.addEventListener('submit', (e) => {
     checkClockDelayMs: parseInt(checkDelayInput.value, 10),
     autoJoinSub: autoJoinSubCheckbox.checked,
     subGuiStepCount: stepCount,
-    subGuiSlots: slots
+    subGuiSlots: slots,
+    macroEnabled: macroEnabledCheckbox.checked,
+    macroKeyword: macroKeywordInput.value,
+    macroCommand: macroCommandInput.value,
+    macroMoveEnabled: macroMoveEnabledCheckbox.checked,
+    macroMoveDelayMs: parseInt(macroMoveDelayInput.value, 10) || 0,
+    macroMoveDirection: macroMoveDirectionSelect.value,
+    macroMoveDurationMs: parseInt(macroMoveDurationInput.value, 10) || 0
   };
   
   socket.emit('save-bots-config', {

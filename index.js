@@ -28,7 +28,14 @@ const defaultConfigTemplate = {
   checkClockDelayMs: 5000,
   autoJoinSub: true,
   subGuiStepCount: 1,
-  subGuiSlots: [10, 12]
+  subGuiSlots: [10, 12],
+  macroEnabled: false,
+  macroKeyword: '',
+  macroCommand: '',
+  macroMoveEnabled: false,
+  macroMoveDelayMs: 1000,
+  macroMoveDirection: 'forward',
+  macroMoveDurationMs: 2000
 };
 
 // Đọc cấu hình JSON
@@ -78,7 +85,14 @@ function getBotConfig(config, username) {
     checkClockDelayMs: b.checkClockDelayMs !== undefined ? b.checkClockDelayMs : defaults.checkClockDelayMs,
     autoJoinSub: b.autoJoinSub !== undefined ? b.autoJoinSub : defaults.autoJoinSub,
     subGuiStepCount: b.subGuiStepCount !== undefined ? b.subGuiStepCount : defaults.subGuiStepCount,
-    subGuiSlots: b.subGuiSlots !== undefined ? b.subGuiSlots : defaults.subGuiSlots
+    subGuiSlots: b.subGuiSlots !== undefined ? b.subGuiSlots : defaults.subGuiSlots,
+    macroEnabled: b.macroEnabled !== undefined ? b.macroEnabled : defaults.macroEnabled,
+    macroKeyword: b.macroKeyword !== undefined ? b.macroKeyword : defaults.macroKeyword,
+    macroCommand: b.macroCommand !== undefined ? b.macroCommand : defaults.macroCommand,
+    macroMoveEnabled: b.macroMoveEnabled !== undefined ? b.macroMoveEnabled : defaults.macroMoveEnabled,
+    macroMoveDelayMs: b.macroMoveDelayMs !== undefined ? b.macroMoveDelayMs : defaults.macroMoveDelayMs,
+    macroMoveDirection: b.macroMoveDirection !== undefined ? b.macroMoveDirection : defaults.macroMoveDirection,
+    macroMoveDurationMs: b.macroMoveDurationMs !== undefined ? b.macroMoveDurationMs : defaults.macroMoveDurationMs
   };
 }
 
@@ -325,6 +339,60 @@ function resolveMinecraftServer(host, port, callback) {
   });
 }
 
+// Helper: Kiểm tra và kích hoạt Macro khi có từ khóa xuất hiện trong chat/system message
+function checkMacroTrigger(username, message) {
+  const activeBot = activeBots[username];
+  if (!activeBot || !activeBot.bot || activeBot.state !== 'online') return;
+
+  const botConfig = getBotConfig(readConfig(), username);
+  if (!botConfig.macroEnabled || !botConfig.macroKeyword) return;
+
+  const keyword = botConfig.macroKeyword.toLowerCase();
+  if (message.toLowerCase().includes(keyword)) {
+    logToWeb(username, `[Macro] Phát hiện từ khóa kích hoạt: "${botConfig.macroKeyword}"`, 'system');
+
+    // 1. Gửi lệnh phản hồi
+    if (botConfig.macroCommand) {
+      const password = readConfig().bots.find(b => b.username === username)?.password || '';
+      const command = botConfig.macroCommand.replace(/{password}/g, password);
+      const maskedCommand = botConfig.macroCommand.replace(/{password}/g, '********');
+      logToWeb(username, `[Macro] Gửi lệnh phản hồi: ${maskedCommand}`, 'system');
+      activeBot.bot.chat(command);
+    }
+
+    // 2. Di chuyển tự động
+    if (botConfig.macroMoveEnabled) {
+      const delay = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
+      const direction = botConfig.macroMoveDirection || 'forward';
+      const duration = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
+
+      logToWeb(username, `[Macro] Lên lịch di chuyển sau ${delay}ms: đi hướng [${direction}] trong ${duration}ms`, 'system');
+
+      setTimeout(() => {
+        if (!activeBot.bot || activeBot.state !== 'online') return;
+        
+        logToWeb(username, `[Macro] Bắt đầu di chuyển hướng: [${direction}]`, 'system');
+        try {
+          activeBot.bot.setControlState(direction, true);
+        } catch (err) {
+          logToWeb(username, `[Macro] Lỗi bắt đầu di chuyển: ${err.message}`, 'error');
+        }
+
+        setTimeout(() => {
+          if (!activeBot.bot) return;
+          logToWeb(username, `[Macro] Dừng di chuyển hướng: [${direction}]`, 'system');
+          try {
+            activeBot.bot.setControlState(direction, false);
+          } catch (err) {
+            logToWeb(username, `[Macro] Lỗi dừng di chuyển: ${err.message}`, 'error');
+          }
+        }, duration);
+
+      }, delay);
+    }
+  }
+}
+
 // Hàm khởi chạy bot
 function startBotInstance(username, password) {
   const config = readConfig();
@@ -491,6 +559,7 @@ function startBotInstance(username, password) {
         const message = jsonMsg.toString().trim();
         if (!message) return;
         logToWeb(username, message, 'server');
+        checkMacroTrigger(username, message);
       });
 
       // Khi bot bị kick
@@ -611,6 +680,14 @@ io.on('connection', (socket) => {
           bot.autoJoinSub = newConfig.autoJoinSub;
           bot.subGuiStepCount = newConfig.subGuiStepCount;
           bot.subGuiSlots = newConfig.subGuiSlots;
+          
+          bot.macroEnabled = newConfig.macroEnabled;
+          bot.macroKeyword = newConfig.macroKeyword;
+          bot.macroCommand = newConfig.macroCommand;
+          bot.macroMoveEnabled = newConfig.macroMoveEnabled;
+          bot.macroMoveDelayMs = newConfig.macroMoveDelayMs;
+          bot.macroMoveDirection = newConfig.macroMoveDirection;
+          bot.macroMoveDurationMs = newConfig.macroMoveDurationMs;
         }
       });
       

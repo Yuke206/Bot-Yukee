@@ -185,7 +185,55 @@
               </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px;"><i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình Cho Bot</button>
+            <!-- Cấu hình Macro Chat -->
+            <div class="config-divider">Cấu hình Macro Chat</div>
+
+            <div class="checkbox-group">
+              <input type="checkbox" id="macro-enabled">
+              <label for="macro-enabled" class="checkbox-label">Kích hoạt Macro Chat</label>
+            </div>
+
+            <div id="macro-config-group" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="macro-keyword">Từ khóa phát hiện</label>
+                  <input type="text" id="macro-keyword" placeholder="Nhập từ khóa...">
+                </div>
+                <div class="form-group">
+                  <label for="macro-command">Lệnh phản hồi</label>
+                  <input type="text" id="macro-command" placeholder="Lệnh gửi khi thấy từ khóa...">
+                </div>
+              </div>
+
+              <div class="checkbox-group">
+                <input type="checkbox" id="macro-move-enabled">
+                <label for="macro-move-enabled" class="checkbox-label">Tự động di chuyển sau khi chạy lệnh</label>
+              </div>
+
+              <div id="macro-move-config-group" style="display: none;">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="macro-move-delay">Thời gian chờ di chuyển (ms)</label>
+                    <input type="number" id="macro-move-delay" placeholder="1000" min="0">
+                  </div>
+                  <div class="form-group">
+                    <label for="macro-move-direction">Hướng đi</label>
+                    <select id="macro-move-direction">
+                      <option value="forward">Đi thẳng (Forward)</option>
+                      <option value="back">Đi lùi (Back)</option>
+                      <option value="left">Sang trái (Left)</option>
+                      <option value="right">Sang phải (Right)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="macro-move-duration">Thời gian di chuyển (ms)</label>
+                  <input type="number" id="macro-move-duration" placeholder="2000" min="100">
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px;"><i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hinh Cho Bot</button>
           </form>
         </div>
       </section>
