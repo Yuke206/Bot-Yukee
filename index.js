@@ -125,27 +125,38 @@ function logToWeb(botname, text, type = 'system') {
   io.emit('log', { botname, text: formattedText, type });
 }
 
+// Helper: Làm sạch tin nhắn chat/kick/GUI của Minecraft để hiển thị chuỗi thuần túy
+function cleanMinecraftChat(chat) {
+  if (!chat) return '';
+  if (typeof chat === 'string') return chat;
+  if (typeof chat === 'object') {
+    // Nếu có hàm toString tùy biến (như ChatMessage của Mineflayer)
+    if (typeof chat.toString === 'function') {
+      const str = chat.toString();
+      if (str && str !== '[object Object]') return str;
+    }
+    // Tự phân giải cấu trúc JSON chat (bao gồm cả mảng extra nếu có)
+    let result = '';
+    if (chat.text !== undefined) result += chat.text;
+    if (chat.translate !== undefined) result += chat.translate;
+    if (Array.isArray(chat.extra)) {
+      chat.extra.forEach(item => {
+        result += cleanMinecraftChat(item);
+      });
+    }
+    if (result.trim()) return result.trim();
+    // Fallback nếu không có thuộc tính thông dụng
+    try {
+      return JSON.stringify(chat);
+    } catch (e) {}
+  }
+  return chat.toString();
+}
+
 // Helper: Làm sạch tiêu đề GUI Minecraft
 function cleanWindowTitle(title) {
   if (!title) return 'GUI Menu';
-  if (typeof title === 'object') {
-    if (title.text !== undefined) return title.text;
-    if (title.translate !== undefined) return title.translate;
-    if (typeof title.toString === 'function') {
-      const str = title.toString();
-      if (str && str !== '[object Object]') return str;
-    }
-  }
-  try {
-    const parsed = JSON.parse(title);
-    if (parsed && typeof parsed === 'object') {
-      if (parsed.text !== undefined) return parsed.text;
-      if (parsed.translate !== undefined) return parsed.translate;
-    }
-  } catch (e) {
-    // Không phải JSON, giữ nguyên chuỗi
-  }
-  return title.toString();
+  return cleanMinecraftChat(title);
 }
 
 // Xây dựng dữ liệu trạng thái bot gửi về client
