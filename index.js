@@ -375,7 +375,7 @@ function startBotInstance(username, password) {
 
       // Đăng ký các sự kiện tương tác GUI Window cho bot
       bot.on('windowOpen', (window) => {
-        if (window.id === 0) return; // Bỏ qua hòm đồ cá nhân
+        if (!window || window.id === 0) return; // Bỏ qua hòm đồ cá nhân
 
         const titleText = cleanWindowTitle(window.title);
         logToWeb(username, `Giao diện GUI '${titleText}' được mở (ID: ${window.id}, Slots: ${window.slots.length})`, 'system');
@@ -462,7 +462,7 @@ function startBotInstance(username, password) {
       });
 
       bot.on('windowClose', (window) => {
-        if (window.id === 0) return;
+        if (!window || window.id === 0) return;
         logToWeb(username, `Giao diện GUI (ID: ${window.id}) đã đóng.`, 'system');
         io.emit('gui-close', {
           botname: username,
