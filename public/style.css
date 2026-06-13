@@ -653,3 +653,58 @@ input:focus, select:focus {
   color: var(--color-success);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
+
+/* Tabs for single/bulk add */
+.bot-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+}
+.tab-btn.active {
+  color: var(--text-main);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Header selection on bots list */
+.bots-list-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+  font-weight: 600;
+}
+.bots-list-header input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+.bots-list-header label {
+  margin-bottom: 0;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+/* Checkboxes inside bot item list */
+.bot-item input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  margin-right: 8px;
+  flex-shrink: 0;
+}

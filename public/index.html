@@ -57,31 +57,60 @@
           <h2>Danh Sách Bot</h2>
         </div>
         <div class="card-body flex-column">
-          <!-- Form thêm Bot nhanh -->
+          <!-- Tab selector thêm 1 / thêm nhiều -->
+          <div class="bot-tabs">
+            <button type="button" id="tab-add-single" class="tab-btn active">Thêm 1 Bot</button>
+            <button type="button" id="tab-add-bulk" class="tab-btn">Thêm Nhiều Bot</button>
+          </div>
+
+          <!-- Form thêm 1 Bot nhanh -->
           <form id="add-bot-form" class="add-bot-area">
             <input type="text" id="new-bot-username" placeholder="Tên bot mới..." required>
             <input type="text" id="new-bot-password" placeholder="Mật khẩu..." required>
             <button type="submit" class="btn btn-primary" title="Thêm bot"><i class="fa-solid fa-plus"></i></button>
           </form>
 
+          <!-- Form thêm nhiều Bot hàng loạt -->
+          <form id="add-bulk-bot-form" class="add-bot-area" style="display: none; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="bulk-prefix" placeholder="Tiền tố (vd: yukee)" required style="flex: 2;">
+              <input type="number" id="bulk-count" placeholder="Số lượng..." min="1" max="100" required style="flex: 1;">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="bulk-password" placeholder="Mật khẩu chung..." required style="flex: 1;">
+              <button type="submit" class="btn btn-primary" style="padding: 10px; font-size: 13px;"><i class="fa-solid fa-users-gear"></i> Tạo Hàng Loạt</button>
+            </div>
+          </form>
+
+          <!-- Header chọn tất cả bot -->
+          <div class="bots-list-header">
+            <input type="checkbox" id="checkbox-select-all">
+            <label for="checkbox-select-all">Chọn tất cả bot</label>
+          </div>
+
           <!-- Danh sách bot cuộn được -->
           <div class="bots-list-wrapper">
             <div id="bots-list" class="bots-list">
-              <!-- Render động bởi javascript -->
               <div class="no-bots-msg">Chưa có bot nào được cấu hình.</div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- COLUMN 2: Cấu hình chung & Tính năng -->
+      <!-- COLUMN 2: Cấu hình bot đã chọn -->
       <section class="card config-card">
         <div class="card-header">
           <i class="fa-solid fa-sliders header-icon"></i>
-          <h2>Cấu Hình Chung</h2>
+          <h2 id="config-title">Cấu Hình Bot</h2>
         </div>
         <div class="card-body">
-          <form id="config-form">
+          <!-- Thông báo khi chưa chọn bot -->
+          <div id="config-disabled-msg" class="no-bots-msg">
+            <i class="fa-solid fa-hand-pointer" style="font-size: 32px; color: var(--color-warning); margin-bottom: 12px; display: block;"></i>
+            Vui lòng tích chọn ít nhất một bot ở danh sách bên trái để chỉnh sửa cấu hình.
+          </div>
+
+          <form id="config-form" style="display: none;">
             <div class="form-row">
               <div class="form-group">
                 <label for="mc-host">IP Máy chủ</label>
@@ -136,13 +165,27 @@
               <label for="auto-join-sub" class="checkbox-label">Tự động chọn cụm (Auto-join Sub)</label>
             </div>
 
-            <div class="form-group" id="sub-gui-slot-container">
-              <label for="sub-gui-slot">Slot cần click trong GUI chọn cụm</label>
-              <input type="number" id="sub-gui-slot" placeholder="10" min="0">
-              <small class="form-help">Slot đầu tiên bắt đầu từ 0 (Hàng 1 Cột 1)</small>
+            <div id="sub-gui-config-group" style="display: none;">
+              <div class="form-group">
+                <label for="sub-gui-step-count">Số bước click GUI</label>
+                <select id="sub-gui-step-count">
+                  <option value="1">1 Bước</option>
+                  <option value="2">2 Bước</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="slot-1-container">
+                <label for="sub-gui-slot-1">Slot GUI bước 1</label>
+                <input type="number" id="sub-gui-slot-1" placeholder="10" min="0">
+              </div>
+
+              <div class="form-group" id="slot-2-container" style="display: none;">
+                <label for="sub-gui-slot-2">Slot GUI bước 2</label>
+                <input type="number" id="sub-gui-slot-2" placeholder="12" min="0">
+              </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình</button>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 8px;"><i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình Cho Bot</button>
           </form>
         </div>
       </section>
@@ -154,7 +197,6 @@
           <h2>Console</h2>
           <select id="console-filter" class="header-select">
             <option value="all">Tất cả bot</option>
-            <!-- Render động bằng javascript -->
           </select>
           <button id="btn-clear-console" class="btn-text" title="Xóa console"><i class="fa-solid fa-trash"></i></button>
         </div>
@@ -167,7 +209,6 @@
           <form id="chat-form" class="chat-input-area">
             <select id="chat-sender" class="chat-sender-select" disabled>
               <option value="">Không có bot online</option>
-              <!-- Render động các bot online -->
             </select>
             <input type="text" id="chat-input" placeholder="Nhập tin nhắn hoặc lệnh..." disabled>
             <button type="submit" id="btn-send-chat" class="btn btn-primary" disabled><i class="fa-solid fa-paper-plane"></i></button>

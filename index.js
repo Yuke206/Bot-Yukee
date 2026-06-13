@@ -114,6 +114,14 @@ function logToWeb(botname, text, type = 'system') {
 // Helper: Làm sạch tiêu đề GUI Minecraft
 function cleanWindowTitle(title) {
   if (!title) return 'GUI Menu';
+  if (typeof title === 'object') {
+    if (title.text !== undefined) return title.text;
+    if (title.translate !== undefined) return title.translate;
+    if (typeof title.toString === 'function') {
+      const str = title.toString();
+      if (str && str !== '[object Object]') return str;
+    }
+  }
   try {
     const parsed = JSON.parse(title);
     if (parsed && typeof parsed === 'object') {
@@ -410,27 +418,34 @@ function startBotInstance(username, password) {
             const targetSlot = slots[0] !== undefined ? slots[0] : 10;
             logToWeb(username, `[Auto-Join] Phát hiện rương thứ nhất. Đang click vào ô: ${targetSlot}`, 'system');
             
+            // Chuyển bước ngay lập tức để tránh cuộc đua gói tin khi rương thứ hai được mở rất nhanh
+            if (stepCount >= 2) {
+              activeBot.currentGuiStep = 1;
+            } else {
+              activeBot.isAutoJoining = false;
+              activeBot.currentGuiStep = 0;
+            }
+
             setTimeout(() => {
               if (!activeBot.bot || activeBot.state !== 'online') return;
               activeBot.bot.clickWindow(targetSlot, 0, 0, (clickErr) => {
                 if (clickErr) {
                   logToWeb(username, `[Auto-Join] Lỗi click rương 1: ${clickErr.message}`, 'error');
+                  // Hoàn tác trạng thái nếu click thất bại
                   activeBot.isAutoJoining = false;
                   activeBot.currentGuiStep = 0;
                 } else {
                   logToWeb(username, `[Auto-Join] Đã click rương 1 thành công.`, 'system');
-                  if (stepCount >= 2) {
-                    activeBot.currentGuiStep = 1;
-                  } else {
-                    activeBot.isAutoJoining = false;
-                    activeBot.currentGuiStep = 0;
-                  }
                 }
               });
             }, 500);
           } else if (activeBot.currentGuiStep === 1) {
             const targetSlot = slots[1] !== undefined ? slots[1] : 12;
             logToWeb(username, `[Auto-Join] Phát hiện rương thứ hai. Đang click vào ô: ${targetSlot}`, 'system');
+
+            // Reset trạng thái tự động click ngay lập tức
+            activeBot.isAutoJoining = false;
+            activeBot.currentGuiStep = 0;
 
             setTimeout(() => {
               if (!activeBot.bot || activeBot.state !== 'online') return;
@@ -440,8 +455,6 @@ function startBotInstance(username, password) {
                 } else {
                   logToWeb(username, `[Auto-Join] Đã click rương 2 thành công. Tự động vào cụm hoàn tất.`, 'system');
                 }
-                activeBot.isAutoJoining = false;
-                activeBot.currentGuiStep = 0;
               });
             }, 500);
           }

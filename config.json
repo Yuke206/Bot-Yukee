@@ -1,21 +1,529 @@
 {
-  "server": {
-    "host": "kingmc.vn",
+  "defaults": {
+    "host": "localhost",
     "port": 25565,
-    "version": "1.20.4"
-  },
-  "global": {
+    "version": "1.20.4",
     "loginCommand": "/login {password}",
     "registerCommand": "/register {password} {password}",
     "loginDelayMs": 2000,
     "checkClockDelayMs": 5000,
     "autoJoinSub": true,
-    "subGuiSlot": 24
+    "subGuiStepCount": 1,
+    "subGuiSlots": [
+      10,
+      12
+    ]
   },
   "bots": [
     {
+      "username": "Yukee_0",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_1",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_2",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_3",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_4",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_5",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_6",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_7",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_8",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_9",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_10",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_11",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_12",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_13",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_14",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_15",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_16",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_17",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_18",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_19",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_20",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_21",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_22",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_23",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_24",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_25",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_26",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_27",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
+      "username": "Yukee_28",
+      "password": "kenduzz2k6",
+      "host": "luckyvn.com",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 2,
+      "subGuiSlots": [
+        22,
+        14
+      ]
+    },
+    {
       "username": "Yukee1",
-      "password": "Kenduzz2k6"
+      "password": "kenduzz2k6",
+      "host": "localhost",
+      "port": 25565,
+      "version": "1.20.4",
+      "loginCommand": "/login {password}",
+      "registerCommand": "/register {password} {password}",
+      "loginDelayMs": 2000,
+      "checkClockDelayMs": 5000,
+      "autoJoinSub": true,
+      "subGuiStepCount": 1,
+      "subGuiSlots": [
+        10,
+        12
+      ]
     }
   ]
 }
