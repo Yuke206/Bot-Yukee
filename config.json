@@ -1,0 +1,21 @@
+{
+  "server": {
+    "host": "kingmc.vn",
+    "port": 25565,
+    "version": "1.20.4"
+  },
+  "global": {
+    "loginCommand": "/login {password}",
+    "registerCommand": "/register {password} {password}",
+    "loginDelayMs": 2000,
+    "checkClockDelayMs": 5000,
+    "autoJoinSub": true,
+    "subGuiSlot": 24
+  },
+  "bots": [
+    {
+      "username": "Yukee1",
+      "password": "Kenduzz2k6"
+    }
+  ]
+}

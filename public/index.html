@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft Multi-Bot Control Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <i class="fa-solid fa-robot logo-icon"></i>
+        <h1>MC-MULTI-BOT <span class="accent-text">Control Panel</span></h1>
+      </div>
+      <div class="status-summary">
+        <span class="summary-pill"><i class="fa-solid fa-circle text-success"></i> <span id="count-online">0</span> Online</span>
+        <span class="summary-pill"><i class="fa-solid fa-circle text-warning"></i> <span id="count-connecting">0</span> Đang kết nối</span>
+        <span class="summary-pill"><i class="fa-solid fa-circle text-danger"></i> <span id="count-offline">0</span> Offline</span>
+      </div>
+    </header>
+
+    <!-- GUI Container (Mặc định ẩn) -->
+    <section class="card gui-card" id="gui-card" style="display: none; margin-bottom: 24px;">
+      <div class="card-header" style="justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <i class="fa-solid fa-boxes-stacked header-icon"></i>
+          <h2>GUI Đang Mở: <span id="gui-title" class="text-success">-</span></h2>
+          <span class="gui-bot-badge" id="gui-bot-badge" style="background: var(--color-primary); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">Yukee1</span>
+        </div>
+        <button id="btn-close-gui-manually" class="btn-text" title="Đóng rương" style="margin-left: auto; color: var(--text-muted);"><i class="fa-solid fa-xmark" style="font-size: 18px;"></i></button>
+      </div>
+      <div class="card-body">
+        <div class="gui-grid" id="gui-grid">
+          <!-- Render các ô vật phẩm bởi JS -->
+        </div>
+        <div class="gui-actions" style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
+          <input type="number" id="manual-gui-slot" placeholder="Slot click thủ công..." min="0" style="max-width: 200px;">
+          <button id="btn-manual-gui-click" class="btn btn-primary" style="padding: 10px 16px;"><i class="fa-solid fa-arrow-pointer"></i> Click</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Grid -->
+    <main class="dashboard-grid">
+      <!-- COLUMN 1: Quản lý danh sách Bot -->
+      <section class="card bots-card">
+        <div class="card-header">
+          <i class="fa-solid fa-users header-icon"></i>
+          <h2>Danh Sách Bot</h2>
+        </div>
+        <div class="card-body flex-column">
+          <!-- Form thêm Bot nhanh -->
+          <form id="add-bot-form" class="add-bot-area">
+            <input type="text" id="new-bot-username" placeholder="Tên bot mới..." required>
+            <input type="text" id="new-bot-password" placeholder="Mật khẩu..." required>
+            <button type="submit" class="btn btn-primary" title="Thêm bot"><i class="fa-solid fa-plus"></i></button>
+          </form>
+
+          <!-- Danh sách bot cuộn được -->
+          <div class="bots-list-wrapper">
+            <div id="bots-list" class="bots-list">
+              <!-- Render động bởi javascript -->
+              <div class="no-bots-msg">Chưa có bot nào được cấu hình.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLUMN 2: Cấu hình chung & Tính năng -->
+      <section class="card config-card">
+        <div class="card-header">
+          <i class="fa-solid fa-sliders header-icon"></i>
+          <h2>Cấu Hình Chung</h2>
+        </div>
+        <div class="card-body">
+          <form id="config-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="mc-host">IP Máy chủ</label>
+                <input type="text" id="mc-host" placeholder="localhost" required>
+              </div>
+              <div class="form-group small-group">
+                <label for="mc-port">Port</label>
+                <input type="number" id="mc-port" placeholder="25565" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="mc-version">Phiên bản Minecraft</label>
+                <select id="mc-version">
+                  <option value="1.20.4">1.20.4</option>
+                  <option value="1.20.2">1.20.2</option>
+                  <option value="1.20.1">1.20.1</option>
+                  <option value="1.19.4">1.19.4</option>
+                  <option value="1.18.2">1.18.2</option>
+                  <option value="1.17.1">1.17.1</option>
+                  <option value="1.16.5">1.16.5</option>
+                  <option value="false">Tự động nhận diện</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="login-command">Lệnh đăng nhập</label>
+              <input type="text" id="login-command" placeholder="/login {password}">
+              <small class="form-help">`{password}` tự động thay bằng mật khẩu riêng của từng bot</small>
+            </div>
+
+            <div class="form-group">
+              <label for="register-command">Lệnh đăng ký (nếu không thấy đồng hồ)</label>
+              <input type="text" id="register-command" placeholder="/register {password} {password}">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="login-delay">Trễ gửi lệnh (ms)</label>
+                <input type="number" id="login-delay" placeholder="2000" min="500">
+              </div>
+              <div class="form-group">
+                <label for="check-delay">Trễ check đồng hồ (ms)</label>
+                <input type="number" id="check-delay" placeholder="5000" min="1000">
+              </div>
+            </div>
+
+            <div class="checkbox-group">
+              <input type="checkbox" id="auto-join-sub">
+              <label for="auto-join-sub" class="checkbox-label">Tự động chọn cụm (Auto-join Sub)</label>
+            </div>
+
+            <div class="form-group" id="sub-gui-slot-container">
+              <label for="sub-gui-slot">Slot cần click trong GUI chọn cụm</label>
+              <input type="number" id="sub-gui-slot" placeholder="10" min="0">
+              <small class="form-help">Slot đầu tiên bắt đầu từ 0 (Hàng 1 Cột 1)</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- COLUMN 3: Console Chat & Log đa bot -->
+      <section class="card console-card">
+        <div class="card-header select-header">
+          <i class="fa-solid fa-terminal header-icon"></i>
+          <h2>Console</h2>
+          <select id="console-filter" class="header-select">
+            <option value="all">Tất cả bot</option>
+            <!-- Render động bằng javascript -->
+          </select>
+          <button id="btn-clear-console" class="btn-text" title="Xóa console"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        <div class="card-body">
+          <div class="console-wrapper">
+            <div class="console-output" id="console-output">
+              <div class="log-line system-line">[Hệ thống] Chào mừng đến với Minecraft Multi-Bot Panel. Hãy cấu hình server và quản lý danh sách bot của bạn.</div>
+            </div>
+          </div>
+          <form id="chat-form" class="chat-input-area">
+            <select id="chat-sender" class="chat-sender-select" disabled>
+              <option value="">Không có bot online</option>
+              <!-- Render động các bot online -->
+            </select>
+            <input type="text" id="chat-input" placeholder="Nhập tin nhắn hoặc lệnh..." disabled>
+            <button type="submit" id="btn-send-chat" class="btn btn-primary" disabled><i class="fa-solid fa-paper-plane"></i></button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Client-side Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
