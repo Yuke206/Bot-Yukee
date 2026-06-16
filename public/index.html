@@ -178,6 +178,11 @@
               <label for="auto-join-sub" class="checkbox-label">Tự động chọn cụm (Auto-join Sub)</label>
             </div>
 
+            <div class="checkbox-group">
+              <input type="checkbox" id="auto-rejoin-cluster">
+              <label for="auto-rejoin-cluster" class="checkbox-label">Tự động vào lại cụm khi có đồng hồ trên hotbar (Auto-rejoin)</label>
+            </div>
+
             <div id="sub-gui-config-group" style="display: none;">
               <div class="form-group">
                 <label for="sub-gui-step-count">Số bước click GUI</label>
@@ -329,6 +334,6 @@
 
   <!-- Client-side Socket.io -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js?v=1.4"></script>
+  <script src="app.js?v=1.5"></script>
 </body>
 </html>

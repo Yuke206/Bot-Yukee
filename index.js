@@ -27,6 +27,7 @@ const defaultConfigTemplate = {
   loginDelayMs: 2000,
   checkClockDelayMs: 5000,
   autoJoinSub: true,
+  autoRejoinCluster: false,
   subGuiStepCount: 1,
   subGuiSlots: [10, 12],
   macroEnabled: false,
@@ -1199,7 +1200,8 @@ function startBotInstance(username, password) {
       health: null,
       food: null,
       isAutoJoining: false,
-      currentGuiStep: 0
+      currentGuiStep: 0,
+      lastAutoRejoinTime: 0
     };
   }
 
@@ -1603,6 +1605,50 @@ setInterval(() => {
       if (money !== null && money !== activeBot.money) {
         activeBot.money = money;
       }
+
+      // Logic Tự động vào lại cụm khi có đồng hồ trên hotbar ngoài chu kỳ login ban đầu
+      const botConfig = getBotConfig(readConfig(), name);
+      if (botConfig.autoRejoinCluster && !activeBot.isAutoJoining) {
+        const now = Date.now();
+        // Cooldown tối thiểu 10s tránh click liên tục khi lỗi/kẹt sảnh
+        if (!activeBot.lastAutoRejoinTime || now - activeBot.lastAutoRejoinTime > 10000) {
+          // Bỏ qua nếu bot vẫn đang chạy chuỗi login (loginCheckTimeout) để tránh xung đột
+          if (!activeBot.loginCheckTimeout) {
+            let hotbarItems = [];
+            try {
+              if (activeBot.bot.inventory) {
+                hotbarItems = activeBot.bot.inventory.items().filter(item => item && item.slot >= 36 && item.slot <= 44);
+              }
+            } catch (invErr) {}
+
+            const clockItem = hotbarItems.find(item => item && item.name === 'clock');
+            if (clockItem) {
+              activeBot.lastAutoRejoinTime = now;
+              logToWeb(name, `[Auto-Rejoin] Phát hiện đồng hồ trên hotbar. Tiến hành tự động click để vào lại cụm...`, 'system');
+
+              const quickbarSlot = clockItem.slot - 36;
+              try {
+                activeBot.bot.setQuickBarSlot(quickbarSlot);
+              } catch (slotErr) {
+                logToWeb(name, `[Auto-Rejoin] Lỗi chuyển slot hotbar: ${slotErr.message}`, 'error');
+              }
+
+              setTimeout(() => {
+                if (!activeBot.bot || activeBot.state !== 'online') return;
+                logToWeb(name, `[Auto-Rejoin] Đã chuyển sang cầm đồng hồ. Kích hoạt trạng thái tự động chọn cụm...`, 'system');
+                activeBot.isAutoJoining = true;
+                activeBot.currentGuiStep = 0;
+                try {
+                  activeBot.bot.activateItem();
+                } catch (actErr) {
+                  logToWeb(name, `[Auto-Rejoin] Lỗi kích hoạt vật phẩm: ${actErr.message}`, 'error');
+                  activeBot.isAutoJoining = false;
+                }
+              }, 200);
+            }
+          }
+        }
+      }
       
       changed = true;
     }
@@ -1641,6 +1687,7 @@ io.on('connection', (socket) => {
           bot.loginDelayMs = newConfig.loginDelayMs;
           bot.checkClockDelayMs = newConfig.checkClockDelayMs;
           bot.autoJoinSub = newConfig.autoJoinSub;
+          bot.autoRejoinCluster = newConfig.autoRejoinCluster;
           bot.subGuiStepCount = newConfig.subGuiStepCount;
           bot.subGuiSlots = newConfig.subGuiSlots;
           
@@ -1694,7 +1741,8 @@ io.on('connection', (socket) => {
         reconnectTimeout: null,
         loginCheckTimeout: null,
         isAutoJoining: false,
-        currentGuiStep: 0
+        currentGuiStep: 0,
+        lastAutoRejoinTime: 0
       };
 
       callback({ success: true });
@@ -1732,7 +1780,8 @@ io.on('connection', (socket) => {
             reconnectTimeout: null,
             loginCheckTimeout: null,
             isAutoJoining: false,
-            currentGuiStep: 0
+            currentGuiStep: 0,
+            lastAutoRejoinTime: 0
           };
           addedCount++;
         }

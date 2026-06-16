@@ -9,6 +9,7 @@ const registerCommandInput = document.getElementById('register-command');
 const loginDelayInput = document.getElementById('login-delay');
 const checkDelayInput = document.getElementById('check-delay');
 const autoJoinSubCheckbox = document.getElementById('auto-join-sub');
+const autoRejoinClusterCheckbox = document.getElementById('auto-rejoin-cluster');
 const subGuiConfigGroup = document.getElementById('sub-gui-config-group');
 const subGuiStepCountSelect = document.getElementById('sub-gui-step-count');
 const slot1Container = document.getElementById('slot-1-container');
@@ -302,6 +303,7 @@ function onSelectionChanged() {
       loginDelayInput.value = botConfig.loginDelayMs || 2000;
       checkDelayInput.value = botConfig.checkClockDelayMs || 5000;
       autoJoinSubCheckbox.checked = botConfig.autoJoinSub;
+      autoRejoinClusterCheckbox.checked = botConfig.autoRejoinCluster || false;
       subGuiStepCountSelect.value = botConfig.subGuiStepCount || 1;
       
       const slots = botConfig.subGuiSlots || [10, 12];
@@ -334,6 +336,7 @@ function onSelectionChanged() {
       loginDelayInput.value = botConfig.loginDelayMs || 2000;
       checkDelayInput.value = botConfig.checkClockDelayMs || 5000;
       autoJoinSubCheckbox.checked = botConfig.autoJoinSub;
+      autoRejoinClusterCheckbox.checked = botConfig.autoRejoinCluster || false;
       subGuiStepCountSelect.value = botConfig.subGuiStepCount || 1;
       
       const slots = botConfig.subGuiSlots || [10, 12];
@@ -385,6 +388,7 @@ configForm.addEventListener('submit', (e) => {
     loginDelayMs: parseInt(loginDelayInput.value, 10),
     checkClockDelayMs: parseInt(checkDelayInput.value, 10),
     autoJoinSub: autoJoinSubCheckbox.checked,
+    autoRejoinCluster: autoRejoinClusterCheckbox.checked,
     subGuiStepCount: stepCount,
     subGuiSlots: slots,
     macroEnabled: macroEnabledCheckbox.checked,
