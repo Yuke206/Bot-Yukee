@@ -23,6 +23,10 @@ const macroKeywordInput = document.getElementById('macro-keyword');
 const macroCommandInput = document.getElementById('macro-command');
 const macroMoveEnabledCheckbox = document.getElementById('macro-move-enabled');
 const macroMoveConfigGroup = document.getElementById('macro-move-config-group');
+const macroMoveTriggerTypeSelect = document.getElementById('macro-move-trigger-type');
+const macroMoveTriggerKeywordGroup = document.getElementById('macro-move-trigger-keyword-group');
+const macroMoveTriggerKeywordInput = document.getElementById('macro-move-trigger-keyword');
+const macroMoveDelayLabel = document.getElementById('macro-move-delay-label');
 const macroMoveDelayInput = document.getElementById('macro-move-delay');
 const macroMoveDirectionSelect = document.getElementById('macro-move-direction');
 const macroMoveDurationInput = document.getElementById('macro-move-duration');
@@ -118,6 +122,12 @@ macroEnabledCheckbox.addEventListener('change', () => {
 
 macroMoveEnabledCheckbox.addEventListener('change', () => {
   macroMoveConfigGroup.style.display = macroMoveEnabledCheckbox.checked ? 'block' : 'none';
+});
+
+macroMoveTriggerTypeSelect.addEventListener('change', () => {
+  const isKeyword = macroMoveTriggerTypeSelect.value === 'keyword';
+  macroMoveTriggerKeywordGroup.style.display = isKeyword ? 'block' : 'none';
+  macroMoveDelayLabel.textContent = isKeyword ? 'Trễ sau khi thấy từ khóa (ms)' : 'Thời gian chờ di chuyển (ms)';
 });
 
 // 1. Nhận cấu hình mặc định ban đầu (Optional, server gửi để giữ tính tương thích)
@@ -303,6 +313,8 @@ function onSelectionChanged() {
       macroKeywordInput.value = botConfig.macroKeyword || '';
       macroCommandInput.value = botConfig.macroCommand || '';
       macroMoveEnabledCheckbox.checked = botConfig.macroMoveEnabled || false;
+      macroMoveTriggerTypeSelect.value = botConfig.macroMoveTriggerType || 'delay';
+      macroMoveTriggerKeywordInput.value = botConfig.macroMoveTriggerKeyword || '';
       macroMoveDelayInput.value = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
       macroMoveDirectionSelect.value = botConfig.macroMoveDirection || 'forward';
       macroMoveDurationInput.value = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
@@ -333,6 +345,8 @@ function onSelectionChanged() {
       macroKeywordInput.value = botConfig.macroKeyword || '';
       macroCommandInput.value = botConfig.macroCommand || '';
       macroMoveEnabledCheckbox.checked = botConfig.macroMoveEnabled || false;
+      macroMoveTriggerTypeSelect.value = botConfig.macroMoveTriggerType || 'delay';
+      macroMoveTriggerKeywordInput.value = botConfig.macroMoveTriggerKeyword || '';
       macroMoveDelayInput.value = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
       macroMoveDirectionSelect.value = botConfig.macroMoveDirection || 'forward';
       macroMoveDurationInput.value = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
@@ -344,6 +358,7 @@ function onSelectionChanged() {
   subGuiStepCountSelect.dispatchEvent(new Event('change'));
   macroEnabledCheckbox.dispatchEvent(new Event('change'));
   macroMoveEnabledCheckbox.dispatchEvent(new Event('change'));
+  macroMoveTriggerTypeSelect.dispatchEvent(new Event('change'));
 }
 
 // Xử lý gửi Cấu hình cho các Bot được chọn
@@ -376,6 +391,8 @@ configForm.addEventListener('submit', (e) => {
     macroKeyword: macroKeywordInput.value,
     macroCommand: macroCommandInput.value,
     macroMoveEnabled: macroMoveEnabledCheckbox.checked,
+    macroMoveTriggerType: macroMoveTriggerTypeSelect.value,
+    macroMoveTriggerKeyword: macroMoveTriggerKeywordInput.value,
     macroMoveDelayMs: parseInt(macroMoveDelayInput.value, 10) || 0,
     macroMoveDirection: macroMoveDirectionSelect.value,
     macroMoveDurationMs: parseInt(macroMoveDurationInput.value, 10) || 0
@@ -569,6 +586,9 @@ const btnCloseGuiManually = document.getElementById('btn-close-gui-manually');
 
 let currentActiveGuiBot = '';
 let currentActiveGuiId = null;
+let currentGuiItems = [];
+
+const globalTooltip = document.getElementById('gui-global-tooltip');
 
 socket.on('gui-open', (data) => {
   currentActiveGuiBot = data.botname;
@@ -576,8 +596,22 @@ socket.on('gui-open', (data) => {
   guiTitle.textContent = data.title;
   guiBotBadge.textContent = data.botname;
   guiCard.style.display = 'block';
+  currentGuiItems = data.items || [];
   renderGuiGrid(data.slotsCount, data.items);
 });
+
+// Helper định dạng tên vật phẩm hiển thị đẹp mắt
+function formatItemName(displayName, name) {
+  let target = displayName || name;
+  if (!target) return '';
+  if (typeof target === 'string' && (target.includes('_') || target === target.toLowerCase())) {
+    return target
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  return target;
+}
 
 socket.on('gui-update', (data) => {
   if (currentActiveGuiBot !== data.botname || currentActiveGuiId !== data.id) return;
@@ -588,11 +622,20 @@ socket.on('gui-update', (data) => {
   slotEl.className = 'gui-slot';
   slotEl.innerHTML = `<span class="slot-index">${data.slotIndex}</span>`;
   
+  // Cập nhật bộ đệm vật phẩm
+  const idx = currentGuiItems.findIndex(it => it.slot === data.slotIndex);
   if (data.item) {
+    const mappedItem = { slot: data.slotIndex, ...data.item };
+    if (idx !== -1) {
+      currentGuiItems[idx] = mappedItem;
+    } else {
+      currentGuiItems.push(mappedItem);
+    }
+    
     slotEl.classList.add('gui-slot-filled');
     const nameEl = document.createElement('span');
     nameEl.className = 'slot-item-name';
-    nameEl.textContent = data.item.name;
+    nameEl.textContent = formatItemName(data.item.displayName, data.item.name);
     slotEl.appendChild(nameEl);
     
     if (data.item.count > 1) {
@@ -600,6 +643,10 @@ socket.on('gui-update', (data) => {
       countEl.className = 'slot-item-count';
       countEl.textContent = data.item.count;
       slotEl.appendChild(countEl);
+    }
+  } else {
+    if (idx !== -1) {
+      currentGuiItems.splice(idx, 1);
     }
   }
 });
@@ -609,7 +656,102 @@ socket.on('gui-close', (data) => {
     guiCard.style.display = 'none';
     currentActiveGuiBot = '';
     currentActiveGuiId = null;
+    currentGuiItems = [];
     guiGrid.innerHTML = '';
+    hideTooltip();
+  }
+});
+
+// Logic hiển thị Tooltip giống Minecraft khi di chuột vào ô
+function showTooltip(item, e) {
+  let titleContent = item.displayNameHtml || `<span style="color: #ffffff; font-weight: bold;">${formatItemName(item.displayName, item.name)}</span>`;
+  let html = `<div class="tooltip-title">${titleContent}</div>`;
+  
+  if (item.loreHtml && Array.isArray(item.loreHtml) && item.loreHtml.length > 0) {
+    item.loreHtml.forEach(lineHtml => {
+      const content = lineHtml.trim() === '' ? '&nbsp;' : lineHtml;
+      html += `<span class="tooltip-line">${content}</span>`;
+    });
+  } else if (item.lore && Array.isArray(item.lore) && item.lore.length > 0) {
+    item.lore.forEach(line => {
+      const content = line.trim() === '' ? '&nbsp;' : line;
+      html += `<span class="tooltip-line">${content}</span>`;
+    });
+  }
+  
+  // Registry ID
+  html += `<div class="tooltip-id">minecraft:${item.name}</div>`;
+  
+  // Tính toán số lượng thành phần NBT (NBT components count)
+  let componentCount = 0;
+  if (item.nbt) {
+    if (item.nbt.value && typeof item.nbt.value === 'object') {
+      componentCount = Object.keys(item.nbt.value).length;
+    } else if (typeof item.nbt === 'object') {
+      componentCount = Object.keys(item.nbt).length;
+    }
+  }
+  
+  if (componentCount > 0) {
+    html += `<div class="tooltip-components">${componentCount} thành phần</div>`;
+  }
+  
+  globalTooltip.innerHTML = html;
+  globalTooltip.style.display = 'block';
+  positionTooltip(e);
+}
+
+function positionTooltip(e) {
+  const offsetX = 15;
+  const offsetY = 15;
+  
+  let x = e.pageX + offsetX;
+  let y = e.pageY + offsetY;
+  
+  const tooltipWidth = globalTooltip.offsetWidth || 240;
+  const tooltipHeight = globalTooltip.offsetHeight || 150;
+  const pageWidth = window.innerWidth;
+  const pageHeight = window.innerHeight;
+  
+  if (x + tooltipWidth > pageWidth - 20) {
+    x = e.pageX - tooltipWidth - offsetX;
+  }
+  
+  if (e.clientY + tooltipHeight > pageHeight - 20) {
+    y = e.pageY - tooltipHeight - offsetY;
+  }
+  
+  globalTooltip.style.left = x + 'px';
+  globalTooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  globalTooltip.style.display = 'none';
+}
+
+// Gắn lắng nghe sự kiện di chuột vào rương sử dụng Event Delegation
+guiGrid.addEventListener('mouseover', (e) => {
+  const slotEl = e.target.closest('.gui-slot');
+  if (!slotEl) return;
+  
+  const slotIndex = parseInt(slotEl.getAttribute('data-slot'), 10);
+  const item = currentGuiItems.find(it => it.slot === slotIndex);
+  
+  if (item) {
+    showTooltip(item, e);
+  }
+});
+
+guiGrid.addEventListener('mousemove', (e) => {
+  if (globalTooltip.style.display === 'block') {
+    positionTooltip(e);
+  }
+});
+
+guiGrid.addEventListener('mouseout', (e) => {
+  const slotEl = e.target.closest('.gui-slot');
+  if (slotEl) {
+    hideTooltip();
   }
 });
 
@@ -626,7 +768,7 @@ function renderGuiGrid(slotsCount, items) {
       slotEl.classList.add('gui-slot-filled');
       const nameEl = document.createElement('span');
       nameEl.className = 'slot-item-name';
-      nameEl.textContent = item.name;
+      nameEl.textContent = formatItemName(item.displayName, item.name);
       slotEl.appendChild(nameEl);
       
       if (item.count > 1) {

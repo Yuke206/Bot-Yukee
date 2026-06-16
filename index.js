@@ -126,96 +126,756 @@ function logToWeb(botname, text, type = 'system') {
   io.emit('log', { botname, text: formattedText, type });
 }
 
+// Quản lý hàng đợi kết nối lại tuần tự (Avoid concurrent reconnects spam)
+let reconnectQueue = [];
+let activeConnectingBot = null;
+let activeConnectingTimeout = null;
+
+function addToReconnectQueue(username, password) {
+  const exists = reconnectQueue.some(item => item.username === username);
+  if (!exists) {
+    reconnectQueue.push({ username, password });
+    logToWeb(username, `[Reconnect Queue] Đã xếp hàng chờ kết nối lại (Vị trí hàng đợi: ${reconnectQueue.length})`, 'system');
+  }
+  processReconnectQueue();
+}
+
+function removeFromReconnectQueue(username) {
+  const initialLength = reconnectQueue.length;
+  reconnectQueue = reconnectQueue.filter(item => item.username !== username);
+  
+  if (activeConnectingBot === username) {
+    logToWeb(username, `[Reconnect Queue] Bot đang kết nối bị hủy thủ công. Chuyển sang bot tiếp theo...`, 'system');
+    if (activeConnectingTimeout) {
+      clearTimeout(activeConnectingTimeout);
+      activeConnectingTimeout = null;
+    }
+    activeConnectingBot = null;
+    processReconnectQueue();
+  }
+}
+
+function onBotEnteredCluster(username) {
+  if (activeConnectingBot === username) {
+    logToWeb(username, `[Reconnect Queue] Bot đã chọn cụm xong. Chờ 2 giây kiểm tra trạng thái kick...`, 'system');
+    if (activeConnectingTimeout) {
+      clearTimeout(activeConnectingTimeout);
+      activeConnectingTimeout = null;
+    }
+    
+    // Đợi 2 giây xem acc có bị kick không trước khi tiếp tục hàng đợi
+    activeConnectingTimeout = setTimeout(() => {
+      activeConnectingTimeout = null;
+      const activeBot = activeBots[username];
+      if (activeBot && activeBot.bot && activeBot.state === 'online') {
+        logToWeb(username, `[Reconnect Queue] Không bị kick sau 2s. Tiến hành kết nối acc tiếp theo...`, 'system');
+        activeConnectingBot = null;
+        processReconnectQueue();
+      } else {
+        logToWeb(username, `[Reconnect Queue] Bot đã ngắt kết nối hoặc bị kick trong vòng 2s. Tiến hành chạy acc tiếp theo...`, 'warning');
+        activeConnectingBot = null;
+        processReconnectQueue();
+      }
+    }, 2000);
+  }
+}
+
+function processReconnectQueue() {
+  if (activeConnectingBot) {
+    // Có bot đang trong tiến trình kết nối và chưa vào cụm, đợi bot này hoàn tất hoặc hết thời gian chờ
+    return;
+  }
+  
+  if (reconnectQueue.length === 0) {
+    return;
+  }
+  
+  const nextBot = reconnectQueue.shift();
+  const { username, password } = nextBot;
+  
+  // Kiểm tra nếu bot đã bị tắt thủ công hoặc chuyển sang offline
+  const activeBot = activeBots[username];
+  if (!activeBot || activeBot.state === 'offline') {
+    processReconnectQueue();
+    return;
+  }
+  
+  logToWeb(username, `[Reconnect Queue] Đến lượt kết nối trong hàng đợi. Bắt đầu kết nối...`, 'system');
+  activeConnectingBot = username;
+  
+  // Đặt giới hạn thời gian chờ an toàn (Safety timeout) là 30 giây
+  if (activeConnectingTimeout) clearTimeout(activeConnectingTimeout);
+  activeConnectingTimeout = setTimeout(() => {
+    logToWeb(username, `[Reconnect Queue] Quá thời gian chờ vào cụm (30s). Tiến hành chuyển sang kết nối acc tiếp theo...`, 'warning');
+    activeConnectingTimeout = null;
+    activeConnectingBot = null;
+    processReconnectQueue();
+  }, 30000);
+  
+  startBotInstance(username, password);
+}
+
+// Helper: Trích xuất chuỗi từ cấu trúc NBT Chat Component (Hỗ trợ đệ quy sâu)
+function extractTextFromNbt(val) {
+  if (val === null || val === undefined) return '';
+  
+  if (typeof val === 'string') {
+    let trimmed = val.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        return extractTextFromNbt(JSON.parse(trimmed));
+      } catch (e) {}
+    }
+    return val;
+  }
+  
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  
+  if (typeof val === 'object') {
+    // Nếu là NBT tag có type và value
+    if (val.type !== undefined && val.value !== undefined) {
+      return extractTextFromNbt(val.value);
+    }
+    
+    // Nếu là ChatMessage (đối tượng Mineflayer)
+    if (typeof val.toString === 'function' && val.constructor && val.constructor.name === 'ChatMessage') {
+      const str = val.toString();
+      if (str && str !== '[object Object]' && !str.includes('[object Object]')) {
+        return str;
+      }
+    }
+    
+    // Nếu là mảng
+    if (Array.isArray(val)) {
+      return val.map(item => extractTextFromNbt(item)).join('');
+    }
+    
+    // Nếu là NBT compound hoặc Chat JSON
+    let result = '';
+    const isContainerTranslate = typeof val.translate === 'string' && val.translate.startsWith('container.');
+    
+    if (val.text !== undefined) result += extractTextFromNbt(val.text);
+    
+    // Bỏ qua dịch container template nếu có 'with' đi kèm để tránh lặp container.chest
+    if (val.translate !== undefined && !(isContainerTranslate && val.with !== undefined)) {
+      result += extractTextFromNbt(val.translate);
+    }
+    
+    if (val.with !== undefined) result += extractTextFromNbt(val.with);
+    if (val.extra !== undefined) result += extractTextFromNbt(val.extra);
+    if (val.keybind !== undefined) result += extractTextFromNbt(val.keybind);
+    if (val.selector !== undefined) result += extractTextFromNbt(val.selector);
+    
+    if (result) return result;
+    
+    // Fallback: toString() nếu chuỗi thu được không chứa [object Object]
+    if (typeof val.toString === 'function') {
+      const str = val.toString();
+      if (str && str !== '[object Object]' && !str.includes('[object Object]')) {
+        return str;
+      }
+    }
+  }
+  return '';
+}
+
+// Helper: Loại bỏ các ký tự mã màu Minecraft (ví dụ: §c, §l)
+function stripMinecraftCodes(str) {
+  if (typeof str !== 'string') return String(str);
+  return str.replace(/§[0-9a-fk-or]/gi, '');
+}
+
 // Helper: Làm sạch tin nhắn chat/kick/GUI của Minecraft để hiển thị chuỗi thuần túy
 function cleanMinecraftChat(chat) {
   if (!chat) return '';
-  if (typeof chat === 'string') return chat;
-  if (typeof chat === 'object') {
-    // Nếu là NBT compound (ví dụ từ packet kick)
-    if (chat.type === 'compound' && chat.value) {
-      let result = '';
-      const val = chat.value;
-      if (val.text && val.text.value !== undefined) {
-        result += val.text.value;
-      }
-      if (val.translate && val.translate.value !== undefined) {
-        result += val.translate.value;
-      }
-      if (val.extra && val.extra.value) {
-        const extraVal = val.extra.value;
-        if (extraVal.value && Array.isArray(extraVal.value)) {
-          extraVal.value.forEach(item => {
-            result += cleanMinecraftChat(item);
-          });
-        } else if (Array.isArray(extraVal)) {
-          extraVal.forEach(item => {
-            result += cleanMinecraftChat(item);
-          });
-        }
-      }
-      if (result.trim()) return result.trim();
-    }
+  return stripMinecraftCodes(extractTextFromNbt(chat));
+}
 
-    // Nếu có hàm toString tùy biến (như ChatMessage của Mineflayer)
-    if (typeof chat.toString === 'function') {
-      const str = chat.toString();
-      if (str && str !== '[object Object]') return str;
-    }
-    // Tự phân giải cấu trúc JSON chat (bao gồm cả mảng extra nếu có)
-    let result = '';
-    if (chat.text !== undefined) result += chat.text;
-    if (chat.translate !== undefined) result += chat.translate;
-    if (Array.isArray(chat.extra)) {
-      chat.extra.forEach(item => {
-        result += cleanMinecraftChat(item);
-      });
-    }
-    if (result.trim()) return result.trim();
-    // Fallback nếu không có thuộc tính thông dụng
-    try {
-      return JSON.stringify(chat);
-    } catch (e) {}
-  }
-  return chat.toString();
+// Helper: Dọn dẹp chuỗi [object Object] lỗi do Mineflayer/server serialize
+function removeObjectObject(str) {
+  if (!str) return '';
+  return str
+    .replace(/\[object Object\]/gi, '')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\{\s*\}/g, '')
+    .replace(/\[\s*\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // Helper: Làm sạch tiêu đề GUI Minecraft
 function cleanWindowTitle(title) {
   if (!title) return 'GUI Menu';
-  return cleanMinecraftChat(title);
+  
+  let rawText = '';
+  if (typeof title === 'string') {
+    let trimmed = title.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        rawText = extractTextFromNbt(parsed);
+      } catch (e) {
+        rawText = title;
+      }
+    } else {
+      rawText = title;
+    }
+  } else {
+    rawText = extractTextFromNbt(title);
+  }
+  
+  return removeObjectObject(cleanMinecraftChat(rawText)) || 'GUI Menu';
 }
 
-// Helper: Trích xuất số tiền từ bảng điểm Scoreboard của bot
-function getBotMoneyFromScoreboard(bot) {
-  if (!bot || !bot.scoreboard) return null;
+// Helper tìm display.Name đệ quy từ NBT
+function getCustomNameFromNbt(nbt) {
+  if (!nbt) return null;
+  
+  // 1. Dạng raw NBT của prismarine-nbt
+  if (nbt.value && typeof nbt.value === 'object') {
+    const displayTag = nbt.value.display;
+    if (displayTag && displayTag.value && typeof displayTag.value === 'object') {
+      const nameTag = displayTag.value.Name || displayTag.value.name;
+      if (nameTag && nameTag.value !== undefined) {
+        return nameTag.value;
+      }
+    }
+  }
+  
+  // 2. Dạng simplified NBT
+  if (nbt.display && typeof nbt.display === 'object') {
+    const nameVal = nbt.display.Name || nbt.display.name;
+    if (nameVal !== undefined) {
+      if (nameVal && typeof nameVal === 'object' && nameVal.value !== undefined) {
+        return nameVal.value;
+      }
+      return nameVal;
+    }
+  }
+  
+  // 3. Fallback đệ quy
+  return findDisplayCustomName(nbt);
+}
 
-  // Từ khóa nhận diện dòng tiền tệ trong bảng điểm
-  const keywords = ['money', 'xu', 'tiền', 'bal', 'balance', 'xu:', 'money:'];
-
-  for (const boardName in bot.scoreboard) {
-    const board = bot.scoreboard[boardName];
-    if (board && board.itemsMap) {
-      for (const key in board.itemsMap) {
-        const item = board.itemsMap[key];
-        if (!item || !item.name) continue;
-
-        // Xóa mã màu § (ví dụ: §6MONEY: §e8820 -> MONEY: 8820)
-        const cleanName = item.name.replace(/§[0-9a-fk-or]/gi, '').trim();
-        const cleanNameLower = cleanName.toLowerCase();
-
-        const hasKeyword = keywords.some(kw => cleanNameLower.includes(kw));
-        if (hasKeyword) {
-          // Trích xuất chuỗi số đầu tiên có thể chứa dấu phẩy/chấm/kí tự $ (ví dụ $8,820 hoặc 150.000)
-          const matches = cleanName.match(/\$?([0-9]{1,3}(?:[,.][0-9]{3})*(?:\.[0-9]+)?|[0-9]+)/);
-          if (matches && matches[0]) {
-            return matches[0].replace('$', '').trim();
+function findDisplayCustomName(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  
+  const display = obj.display || obj.Display;
+  if (display !== undefined) {
+    if (display && typeof display === 'object') {
+      const displayVal = (display.type && display.value !== undefined) ? display.value : display;
+      if (displayVal && typeof displayVal === 'object') {
+        const nameObj = displayVal.Name || displayVal.name;
+        if (nameObj !== undefined) {
+          if (nameObj && typeof nameObj === 'object' && nameObj.value !== undefined) {
+            return nameObj.value;
           }
+          return nameObj;
         }
+      }
+    }
+  }
+  
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const res = findDisplayCustomName(item);
+      if (res) return res;
+    }
+  } else {
+    for (const key in obj) {
+      if (obj[key] && typeof obj[key] === 'object') {
+        const res = findDisplayCustomName(obj[key]);
+        if (res) return res;
       }
     }
   }
   return null;
 }
+
+// Helper: Trích xuất mảng Lore (mô tả) từ NBT của vật phẩm
+function getItemLoreFromNbt(nbt) {
+  if (!nbt) return [];
+
+  let loreList = null;
+
+  // 1. Dạng raw NBT của prismarine-nbt
+  if (nbt.value && typeof nbt.value === 'object') {
+    const displayTag = nbt.value.display || nbt.value.Display;
+    if (displayTag && displayTag.value && typeof displayTag.value === 'object') {
+      const loreTag = displayTag.value.Lore || displayTag.value.lore;
+      if (loreTag && loreTag.value && loreTag.value.value) {
+        loreList = loreTag.value.value;
+      } else if (loreTag && Array.isArray(loreTag.value)) {
+        loreList = loreTag.value;
+      }
+    }
+  }
+
+  // 2. Dạng simplified NBT
+  if (!loreList) {
+    const displayObj = nbt.display || nbt.Display;
+    if (displayObj && typeof displayObj === 'object') {
+      const loreTag = displayObj.Lore || displayObj.lore;
+      if (Array.isArray(loreTag)) {
+        loreList = loreTag;
+      }
+    }
+  }
+
+  // 3. Fallback đệ quy
+  if (!loreList) {
+    loreList = findLoreInObj(nbt);
+  }
+
+  if (!Array.isArray(loreList)) return [];
+
+  return loreList.map(line => {
+    let rawLine = line;
+    if (line && typeof line === 'object') {
+      rawLine = line.value !== undefined ? line.value : JSON.stringify(line);
+    }
+    const extracted = extractTextFromNbt(rawLine);
+    return cleanMinecraftChat(extracted);
+  }).filter(Boolean);
+}
+
+function findLoreInObj(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+
+  const display = obj.display || obj.Display;
+  if (display !== undefined) {
+    if (display && typeof display === 'object') {
+      const displayVal = (display.type && display.value !== undefined) ? display.value : display;
+      if (displayVal && typeof displayVal === 'object') {
+        const lore = displayVal.Lore || displayVal.lore;
+        if (lore !== undefined) {
+          if (lore && typeof lore === 'object' && lore.value !== undefined) {
+            return lore.value.value || lore.value;
+          }
+          return lore;
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const res = findLoreInObj(item);
+      if (res) return res;
+    }
+  } else {
+    for (const key in obj) {
+      if (obj[key] && typeof obj[key] === 'object') {
+        const res = findLoreInObj(obj[key]);
+        if (res) return res;
+      }
+    }
+  }
+  return null;
+}
+
+const MC_COLORS = {
+  'black': '#000000',
+  'dark_blue': '#0000aa',
+  'dark_green': '#00aa00',
+  'dark_aqua': '#00aaaa',
+  'dark_red': '#aa0000',
+  'dark_purple': '#aa00aa',
+  'gold': '#ffaa00',
+  'gray': '#aaaaaa',
+  'dark_gray': '#555555',
+  'blue': '#5555ff',
+  'green': '#55ff55',
+  'aqua': '#55ffff',
+  'red': '#ff5555',
+  'light_purple': '#ff55ff',
+  'yellow': '#ffff55',
+  'white': '#ffffff'
+};
+
+const MC_CODE_TO_COLOR = {
+  '0': 'black',
+  '1': 'dark_blue',
+  '2': 'dark_green',
+  '3': 'dark_aqua',
+  '4': 'dark_red',
+  '5': 'dark_purple',
+  '6': 'gold',
+  '7': 'gray',
+  '8': 'dark_gray',
+  '9': 'blue',
+  'a': 'green',
+  'b': 'aqua',
+  'c': 'red',
+  'd': 'light_purple',
+  'e': 'yellow',
+  'f': 'white'
+};
+
+function parseMcCodes(text, initialStyle = {}) {
+  if (typeof text !== 'string') return [{ text: String(text), style: initialStyle }];
+
+  const segments = [];
+  let currentStyle = { ...initialStyle };
+  let activeText = '';
+
+  function commitSegment() {
+    if (activeText) {
+      segments.push({ text: activeText, style: { ...currentStyle } });
+      activeText = '';
+    }
+  }
+
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '§' && i + 1 < text.length) {
+      const code = text[i + 1].toLowerCase();
+      commitSegment();
+      
+      if (MC_CODE_TO_COLOR[code] !== undefined) {
+        currentStyle.color = MC_CODE_TO_COLOR[code];
+        currentStyle.bold = false;
+        currentStyle.italic = false;
+        currentStyle.underlined = false;
+        currentStyle.strikethrough = false;
+        currentStyle.obfuscated = false;
+      } else if (code === 'k') {
+        currentStyle.obfuscated = true;
+      } else if (code === 'l') {
+        currentStyle.bold = true;
+      } else if (code === 'm') {
+        currentStyle.strikethrough = true;
+      } else if (code === 'n') {
+        currentStyle.underlined = true;
+      } else if (code === 'o') {
+        currentStyle.italic = true;
+      } else if (code === 'r') {
+        currentStyle = {
+          color: initialStyle.color || null,
+          bold: initialStyle.bold || false,
+          italic: initialStyle.italic || false,
+          underlined: initialStyle.underlined || false,
+          strikethrough: initialStyle.strikethrough || false,
+          obfuscated: initialStyle.obfuscated || false
+        };
+      } else {
+        activeText += '§' + text[i + 1];
+      }
+      i++;
+    } else {
+      activeText += text[i];
+    }
+  }
+  commitSegment();
+  return segments;
+}
+
+function segmentsToHtml(segments) {
+  return segments.map(seg => {
+    if (!seg.text) return '';
+    let styles = [];
+    let classes = [];
+    
+    if (seg.style.color) {
+      const hex = MC_COLORS[seg.style.color] || (seg.style.color.startsWith('#') ? seg.style.color : null);
+      if (hex) {
+        styles.push(`color: ${hex}`);
+      }
+    }
+    
+    if (seg.style.bold) styles.push('font-weight: bold');
+    if (seg.style.italic) styles.push('font-style: italic');
+    
+    let textDec = [];
+    if (seg.style.underlined) textDec.push('underline');
+    if (seg.style.strikethrough) textDec.push('line-through');
+    if (textDec.length > 0) styles.push(`text-decoration: ${textDec.join(' ')}`);
+    
+    if (seg.style.obfuscated) {
+      classes.push('mc-obfuscated');
+    }
+    
+    const styleAttr = styles.length > 0 ? ` style="${styles.join('; ')}"` : '';
+    const classAttr = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
+    
+    const escapedText = seg.text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+      
+    if (styleAttr || classAttr) {
+      return `<span${classAttr}${styleAttr}>${escapedText}</span>`;
+    }
+    return escapedText;
+  }).join('');
+}
+
+function parseMcComponent(component, parentStyle = {}) {
+  if (component === null || component === undefined) return [];
+
+  if (typeof component === 'string' || typeof component === 'number' || typeof component === 'boolean') {
+    if (typeof component === 'string') {
+      const trimmed = component.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          return parseMcComponent(JSON.parse(trimmed), parentStyle);
+        } catch (e) {}
+      }
+    }
+    return parseMcCodes(String(component), parentStyle);
+  }
+
+  if (typeof component === 'object' && component.type !== undefined && component.value !== undefined) {
+    return parseMcComponent(component.value, parentStyle);
+  }
+
+  if (Array.isArray(component)) {
+    let result = [];
+    for (const sub of component) {
+      result = result.concat(parseMcComponent(sub, parentStyle));
+    }
+    return result;
+  }
+
+  if (typeof component === 'object') {
+    const currentStyle = {
+      color: component.color !== undefined ? component.color : parentStyle.color,
+      bold: component.bold !== undefined ? !!component.bold : parentStyle.bold,
+      italic: component.italic !== undefined ? !!component.italic : parentStyle.italic,
+      underlined: component.underlined !== undefined ? !!component.underlined : parentStyle.underlined,
+      strikethrough: component.strikethrough !== undefined ? !!component.strikethrough : parentStyle.strikethrough,
+      obfuscated: component.obfuscated !== undefined ? !!component.obfuscated : parentStyle.obfuscated
+    };
+
+    let result = [];
+
+    if (component.text !== undefined) {
+      result = result.concat(parseMcComponent(component.text, currentStyle));
+    }
+    if (component.translate !== undefined) {
+      result = result.concat(parseMcComponent(component.translate, currentStyle));
+    }
+    if (component.with !== undefined) {
+      result = result.concat(parseMcComponent(component.with, currentStyle));
+    }
+    if (component.extra !== undefined) {
+      result = result.concat(parseMcComponent(component.extra, currentStyle));
+    }
+
+    return result;
+  }
+
+  return [];
+}
+
+function mcComponentToHtml(component) {
+  const segments = parseMcComponent(component);
+  return segmentsToHtml(segments);
+}
+
+function getItemDisplayNameHtml(item) {
+  if (!item) return '';
+
+  const customNameRaw = getCustomNameFromNbt(item.nbt);
+  if (customNameRaw) {
+    const html = mcComponentToHtml(customNameRaw);
+    if (html && !html.includes('[object Object]')) {
+      return html;
+    }
+  }
+
+  if (item.displayName) {
+    return mcComponentToHtml(item.displayName);
+  }
+
+  if (item.name) {
+    const formatted = item.name
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    return mcComponentToHtml(formatted);
+  }
+
+  return 'unknown';
+}
+
+function getItemLoreHtmlFromNbt(nbt) {
+  if (!nbt) return [];
+
+  let loreList = null;
+
+  if (nbt.value && typeof nbt.value === 'object') {
+    const displayTag = nbt.value.display || nbt.value.Display;
+    if (displayTag && displayTag.value && typeof displayTag.value === 'object') {
+      const loreTag = displayTag.value.Lore || displayTag.value.lore;
+      if (loreTag && loreTag.value && loreTag.value.value) {
+        loreList = loreTag.value.value;
+      } else if (loreTag && Array.isArray(loreTag.value)) {
+        loreList = loreTag.value;
+      }
+    }
+  }
+
+  if (!loreList) {
+    const displayObj = nbt.display || nbt.Display;
+    if (displayObj && typeof displayObj === 'object') {
+      const loreTag = displayObj.Lore || displayObj.lore;
+      if (Array.isArray(loreTag)) {
+        loreList = loreTag;
+      }
+    }
+  }
+
+  if (!loreList) {
+    loreList = findLoreInObj(nbt);
+  }
+
+  if (!Array.isArray(loreList)) return [];
+
+  return loreList.map(line => {
+    let rawLine = line;
+    if (line && typeof line === 'object') {
+      rawLine = line.value !== undefined ? line.value : line;
+    }
+    return mcComponentToHtml(rawLine);
+  });
+}
+
+// Helper: Trích xuất tên hiển thị thân thiện/Custom Name của vật phẩm
+function getItemDisplayName(item) {
+  if (!item) return '';
+
+  // 1. Sử dụng getter customName có sẵn của prismarine-item (phương thức chuẩn)
+  if (item.customName) {
+    const extracted = extractTextFromNbt(item.customName);
+    if (extracted && !extracted.includes('[object Object]')) {
+      return cleanMinecraftChat(extracted);
+    }
+  }
+
+  // 2. Dự phòng tìm display.Name đệ quy từ NBT tag
+  const customNameRaw = getCustomNameFromNbt(item.nbt);
+  if (customNameRaw) {
+    const extracted = extractTextFromNbt(customNameRaw);
+    if (extracted && !extracted.includes('[object Object]')) {
+      return cleanMinecraftChat(extracted);
+    }
+  }
+
+  // 3. Fallback sang displayName (tên hiển thị thân thiện mặc định, ví dụ "Diamond Sword")
+  if (item.displayName) {
+    return cleanMinecraftChat(item.displayName);
+  }
+
+  // 4. Fallback cuối cùng sang tên format đẹp (ví dụ "diamond_sword" -> "Diamond Sword")
+  if (item.name) {
+    return item.name
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  return 'unknown';
+}
+
+// Biến lưu mốc thời gian ghi log debug scoreboard tránh spam console
+let lastScoreboardLogTime = {};
+
+// Helper: Chuyển đổi các ký tự unicode dạng Small Caps (chữ viết hoa nhỏ) về chữ thường chuẩn ASCII
+function normalizeSmallCaps(str) {
+  if (!str) return '';
+  const map = {
+    'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', '─': '-', 'ᴅ': 'd', 'ᴇ': 'e', 'ꜰ': 'f', 'ɢ': 'g', 'ʜ': 'h', 'ɪ': 'i', 'ᴊ': 'j', 'ᴋ': 'k', 'ʟ': 'l', 'ᴍ': 'm', 'ɴ': 'n', 'ᴏ': 'o', 'ᴘ': 'p', 'ǫ': 'q', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'x': 'x', 'ʏ': 'y', 'ᴢ': 'z'
+  };
+  return str.split('').map(char => map[char] || char).join('');
+}
+
+// Helper: Trích xuất số tiền từ bảng điểm Scoreboard của bot
+function getBotMoneyFromScoreboard(bot) {
+  if (!bot || !bot.customScoreboard) return null;
+
+  // Từ khóa mở rộng để nhận diện dòng tiền tệ trong bảng điểm
+  const keywords = ['money', 'xu', 'tiền', 'coins', 'coin', 'bal', 'balance', 'sodu', 'số dư', 'tài sản', 'purse', 'point', 'points', 'gem', 'gems', 'đang có', '$', '💵', '💰', '₫', 'vnd'];
+
+  const custom = bot.customScoreboard;
+
+  // Duyệt qua các objective trong custom scoreboard nhận từ packet
+  for (const objName in custom.objectives) {
+    const objective = custom.objectives[objName];
+    if (objective && objective.scores) {
+      for (const itemName in objective.scores) {
+        let lineText = '';
+        const teamName = custom.playerToTeam[itemName];
+        if (teamName && custom.teams[teamName]) {
+          const team = custom.teams[teamName];
+          lineText = team.prefix + itemName + team.suffix;
+        } else {
+          lineText = itemName;
+        }
+
+        // Làm sạch và chuẩn hóa chữ hoa nhỏ (Small Caps) thành chữ thường ASCII chuẩn
+        const cleanLine = lineText.replace(/§[0-9a-fk-or]/gi, '').trim();
+        const normalizedLine = normalizeSmallCaps(cleanLine.toLowerCase());
+
+        const hasKeyword = keywords.some(kw => normalizedLine.includes(kw));
+        if (hasKeyword) {
+          // Trích xuất số (ví dụ: "15,000", "15000", "150.000")
+          const matches = cleanLine.match(/(?:[0-9]{1,3}(?:[,.][0-9]{3})+|[0-9]+)/);
+          if (matches && matches[0]) {
+            return matches[0].trim();
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Ghi log debug chi tiết ra tệp tin khi không tìm thấy số tiền (10 giây/lần mỗi bot để tránh spam)
+  const now = Date.now();
+  if (bot.username && (!lastScoreboardLogTime[bot.username] || now - lastScoreboardLogTime[bot.username] > 10000)) {
+    lastScoreboardLogTime[bot.username] = now;
+    
+    try {
+      let debugText = `================ CUSTOM SCOREBOARD DEBUG FOR ${bot.username} AT ${new Date().toLocaleString()} ================\n`;
+      debugText += `Objectives: ${JSON.stringify(Object.keys(custom.objectives))}\n`;
+      debugText += `Teams count: ${Object.keys(custom.teams).length}\n\n`;
+
+      for (const objName in custom.objectives) {
+        const obj = custom.objectives[objName];
+        debugText += `--- Objective: "${objName}" | Title: "${obj.title}" ---\n`;
+        const scoresSorted = Object.entries(obj.scores).sort((a, b) => b[1] - a[1]);
+        debugText += `Scores count: ${scoresSorted.length}\n`;
+        
+        for (const [itemName, scoreValue] of scoresSorted) {
+          const teamName = custom.playerToTeam[itemName];
+          let prefix = '';
+          let suffix = '';
+          if (teamName && custom.teams[teamName]) {
+            prefix = custom.teams[teamName].prefix;
+            suffix = custom.teams[teamName].suffix;
+          }
+          const fullLine = prefix + itemName + suffix;
+          const cleanLine = fullLine.replace(/§[0-9a-fk-or]/gi, '');
+          const normalizedLine = normalizeSmallCaps(cleanLine.toLowerCase());
+          debugText += `  * Key: "${itemName}" | Score Value: ${scoreValue} | Team: "${teamName || 'none'}"\n`;
+          debugText += `    - Full Line: "${fullLine}"\n`;
+          debugText += `    - Clean Line: "${cleanLine}"\n`;
+          debugText += `    - Normalized Line: "${normalizedLine}"\n`;
+        }
+        debugText += `--------------------------------------------------\n\n`;
+      }
+
+      fs.writeFileSync('scoreboard_debug.txt', debugText);
+      logToWeb(bot.username, `[Debug Bảng Điểm] Chưa đọc được tiền của bot. Đã ghi thông tin bảng điểm chi tiết vào tệp scoreboard_debug.txt trong thư mục bot!`, 'warning');
+    } catch (err) {
+      console.error(`[Scoreboard Debug File Error]`, err);
+    }
+  }
+
+  return null;
+}
+
+
 
 // Xây dựng dữ liệu trạng thái bot gửi về client
 function getBotsStatusData() {
@@ -375,7 +1035,11 @@ function scheduleCheckClock(username, password, checkAttempt) {
 
         } else {
           logToWeb(username, `Không thể tìm thấy đồng hồ trong hotbar để cầm.`, 'error');
+          onBotEnteredCluster(username);
         }
+      } else {
+        logToWeb(username, `Chế độ tự động vào cụm đang tắt. Bot kết nối hoàn tất.`, 'system');
+        onBotEnteredCluster(username);
       }
 
     } else {
@@ -405,6 +1069,7 @@ function scheduleCheckClock(username, password, checkAttempt) {
         performLoginSequence(username, password, 3);
       } else {
         logToWeb(username, `Đã kiểm tra 3 lần vẫn không thấy đồng hồ ở hotbar. Dừng chu kỳ kiểm tra đăng nhập.`, 'error');
+        onBotEnteredCluster(username);
       }
     }
   }, botConfig.checkClockDelayMs);
@@ -429,19 +1094,66 @@ function resolveMinecraftServer(host, port, callback) {
   });
 }
 
+// Helper: Thực hiện việc nhấn giữ phím di chuyển tự động cho bot
+function executeAutoMove(username, activeBot, botConfig) {
+  const delay = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
+  const direction = botConfig.macroMoveDirection || 'forward';
+  const duration = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
+
+  logToWeb(username, `[Macro] Lên lịch di chuyển: chờ ${delay}ms -> đi hướng [${direction}] trong ${duration}ms`, 'system');
+
+  setTimeout(() => {
+    if (!activeBot.bot || activeBot.state !== 'online') return;
+    
+    logToWeb(username, `[Macro] Bắt đầu di chuyển hướng: [${direction}]`, 'system');
+    try {
+      activeBot.bot.setControlState(direction, true);
+    } catch (err) {
+      logToWeb(username, `[Macro] Lỗi bắt đầu di chuyển: ${err.message}`, 'error');
+    }
+
+    setTimeout(() => {
+      if (!activeBot.bot) return;
+      logToWeb(username, `[Macro] Dừng di chuyển hướng: [${direction}]`, 'system');
+      try {
+        activeBot.bot.setControlState(direction, false);
+      } catch (err) {
+        logToWeb(username, `[Macro] Lỗi dừng di chuyển: ${err.message}`, 'error');
+      }
+    }, duration);
+
+  }, delay);
+}
+
 // Helper: Kiểm tra và kích hoạt Macro khi có từ khóa xuất hiện trong chat/system message
 function checkMacroTrigger(username, message) {
   const activeBot = activeBots[username];
   if (!activeBot || !activeBot.bot || activeBot.state !== 'online') return;
 
   const botConfig = getBotConfig(readConfig(), username);
-  if (!botConfig.macroEnabled || !botConfig.macroKeyword) return;
+  if (!botConfig.macroEnabled) return;
 
+  const messageLower = message.toLowerCase();
+
+  // 1. Kiểm tra nếu đang trong trạng thái chờ từ khóa di chuyển
+  if (activeBot.waitingForMoveKeyword && botConfig.macroMoveEnabled && botConfig.macroMoveTriggerType === 'keyword') {
+    const triggerKeyword = (botConfig.macroMoveTriggerKeyword || '').toLowerCase();
+    if (triggerKeyword && messageLower.includes(triggerKeyword)) {
+      activeBot.waitingForMoveKeyword = false;
+      if (activeBot.macroMoveTimeout) clearTimeout(activeBot.macroMoveTimeout);
+      logToWeb(username, `[Macro] Phát hiện từ khóa kích hoạt di chuyển: "${botConfig.macroMoveTriggerKeyword}"`, 'system');
+      executeAutoMove(username, activeBot, botConfig);
+      return; // Dừng tại đây, không kiểm tra tiếp macro chính
+    }
+  }
+
+  // 2. Kiểm tra từ khóa kích hoạt macro chính
+  if (!botConfig.macroKeyword) return;
   const keyword = botConfig.macroKeyword.toLowerCase();
-  if (message.toLowerCase().includes(keyword)) {
+  if (messageLower.includes(keyword)) {
     logToWeb(username, `[Macro] Phát hiện từ khóa kích hoạt: "${botConfig.macroKeyword}"`, 'system');
 
-    // 1. Gửi lệnh phản hồi
+    // Gửi lệnh phản hồi
     if (botConfig.macroCommand) {
       const password = readConfig().bots.find(b => b.username === username)?.password || '';
       const command = botConfig.macroCommand.replace(/{password}/g, password);
@@ -450,35 +1162,25 @@ function checkMacroTrigger(username, message) {
       activeBot.bot.chat(command);
     }
 
-    // 2. Di chuyển tự động
+    // Lên lịch di chuyển tự động
     if (botConfig.macroMoveEnabled) {
-      const delay = botConfig.macroMoveDelayMs !== undefined ? botConfig.macroMoveDelayMs : 1000;
-      const direction = botConfig.macroMoveDirection || 'forward';
-      const duration = botConfig.macroMoveDurationMs !== undefined ? botConfig.macroMoveDurationMs : 2000;
+      const triggerType = botConfig.macroMoveTriggerType || 'delay';
+      if (triggerType === 'keyword' && botConfig.macroMoveTriggerKeyword) {
+        logToWeb(username, `[Macro] Đang chờ từ khóa di chuyển: "${botConfig.macroMoveTriggerKeyword}" xuất hiện trong chat...`, 'system');
+        activeBot.waitingForMoveKeyword = true;
 
-      logToWeb(username, `[Macro] Lên lịch di chuyển sau ${delay}ms: đi hướng [${direction}] trong ${duration}ms`, 'system');
-
-      setTimeout(() => {
-        if (!activeBot.bot || activeBot.state !== 'online') return;
-        
-        logToWeb(username, `[Macro] Bắt đầu di chuyển hướng: [${direction}]`, 'system');
-        try {
-          activeBot.bot.setControlState(direction, true);
-        } catch (err) {
-          logToWeb(username, `[Macro] Lỗi bắt đầu di chuyển: ${err.message}`, 'error');
-        }
-
-        setTimeout(() => {
-          if (!activeBot.bot) return;
-          logToWeb(username, `[Macro] Dừng di chuyển hướng: [${direction}]`, 'system');
-          try {
-            activeBot.bot.setControlState(direction, false);
-          } catch (err) {
-            logToWeb(username, `[Macro] Lỗi dừng di chuyển: ${err.message}`, 'error');
+        // Đặt timeout 1 phút để tránh treo trạng thái chờ vô thời hạn
+        if (activeBot.macroMoveTimeout) clearTimeout(activeBot.macroMoveTimeout);
+        activeBot.macroMoveTimeout = setTimeout(() => {
+          if (activeBot.waitingForMoveKeyword) {
+            activeBot.waitingForMoveKeyword = false;
+            logToWeb(username, `[Macro] Đã quá thời gian chờ từ khóa di chuyển (60s). Hủy di chuyển.`, 'warning');
           }
-        }, duration);
-
-      }, delay);
+        }, 60000);
+      } else {
+        // Mặc định chạy theo thời gian chờ (delay) sau lệnh
+        executeAutoMove(username, activeBot, botConfig);
+      }
     }
   }
 }
@@ -531,6 +1233,107 @@ function startBotInstance(username, password) {
 
       activeBot.bot = bot;
 
+      // Khởi tạo bảng điểm tùy biến để khắc phục lỗi tương thích 1.20.4 của Mineflayer
+      bot.customScoreboard = {
+        objectives: {},
+        teams: {},
+        playerToTeam: {}
+      };
+
+      // Đăng ký lắng nghe gói tin ngay lập tức để không bỏ lỡ các gói tin trước spawn
+      bot._client.on('packet', (data, metadata) => {
+        const name = metadata.name;
+        
+        // 1. Nhận objective
+        if (name === 'scoreboard_objective') {
+          const { name: objName, action, displayText } = data;
+          if (action === 0) { // Create
+            bot.customScoreboard.objectives[objName] = {
+              title: extractTextFromNbt(displayText) || objName,
+              scores: {}
+            };
+          } else if (action === 1) { // Remove
+            delete bot.customScoreboard.objectives[objName];
+          } else if (action === 2) { // Update title
+            if (bot.customScoreboard.objectives[objName]) {
+              bot.customScoreboard.objectives[objName].title = extractTextFromNbt(displayText) || objName;
+            }
+          }
+        }
+        
+        // 2. Nhận điểm số (Score)
+        else if (name === 'scoreboard_score') {
+          const { itemName, scoreName, value, action } = data;
+          const isSet = action === 0 || action === undefined;
+          const isRemove = action === 1;
+          
+          if (isSet) {
+            if (bot.customScoreboard.objectives[scoreName]) {
+              bot.customScoreboard.objectives[scoreName].scores[itemName] = value;
+            }
+          } else if (isRemove) {
+            if (bot.customScoreboard.objectives[scoreName]) {
+              delete bot.customScoreboard.objectives[scoreName].scores[itemName];
+            }
+          }
+        }
+        
+        // 3. Reset điểm số (Minecraft 1.20.3+)
+        else if (name === 'reset_score') {
+          const { itemName, objectiveName } = data;
+          if (objectiveName) {
+            if (bot.customScoreboard.objectives[objectiveName]) {
+              delete bot.customScoreboard.objectives[objectiveName].scores[itemName];
+            }
+          } else {
+            for (const objName in bot.customScoreboard.objectives) {
+              delete bot.customScoreboard.objectives[objName].scores[itemName];
+            }
+          }
+        }
+        
+        // 4. Nhận thông tin Teams
+        else if (name === 'teams' || name === 'scoreboard_team') {
+          const { team: teamName, mode, prefix, suffix, players } = data;
+          
+          if (mode === 0) { // Create team
+            bot.customScoreboard.teams[teamName] = {
+              prefix: extractTextFromNbt(prefix) || '',
+              suffix: extractTextFromNbt(suffix) || '',
+              players: players || []
+            };
+            if (players) {
+              players.forEach(p => { bot.customScoreboard.playerToTeam[p] = teamName; });
+            }
+          } else if (mode === 1) { // Remove team
+            const team = bot.customScoreboard.teams[teamName];
+            if (team && team.players) {
+              team.players.forEach(p => { delete bot.customScoreboard.playerToTeam[p]; });
+            }
+            delete bot.customScoreboard.teams[teamName];
+          } else if (mode === 2 || mode === 4) { // Update info
+            if (bot.customScoreboard.teams[teamName]) {
+              if (prefix !== undefined) bot.customScoreboard.teams[teamName].prefix = extractTextFromNbt(prefix) || '';
+              if (suffix !== undefined) bot.customScoreboard.teams[teamName].suffix = extractTextFromNbt(suffix) || '';
+            }
+          } else if (mode === 3) { // Add players
+            if (bot.customScoreboard.teams[teamName]) {
+              (players || []).forEach(p => {
+                if (!bot.customScoreboard.teams[teamName].players.includes(p)) {
+                  bot.customScoreboard.teams[teamName].players.push(p);
+                }
+                bot.customScoreboard.playerToTeam[p] = teamName;
+              });
+            }
+          } else if (mode === 4) { // Remove players
+            if (bot.customScoreboard.teams[teamName]) {
+              bot.customScoreboard.teams[teamName].players = bot.customScoreboard.teams[teamName].players.filter(p => !players.includes(p));
+              (players || []).forEach(p => { delete bot.customScoreboard.playerToTeam[p]; });
+            }
+          }
+        }
+      }); // end bot._client.on('packet', ...)
+
       // Đăng ký các sự kiện tương tác GUI Window cho bot
       bot.on('windowOpen', (window) => {
         if (!window || window.id === 0) return; // Bỏ qua hòm đồ cá nhân
@@ -538,15 +1341,38 @@ function startBotInstance(username, password) {
         const titleText = cleanWindowTitle(window.title);
         logToWeb(username, `Giao diện GUI '${titleText}' được mở (ID: ${window.id}, Slots: ${window.slots.length})`, 'system');
 
+        // Dump slots NBT debug
+        try {
+          const debugSlots = window.slots.map((item, index) => {
+            if (!item) return null;
+            return {
+              slot: index,
+              name: item.name,
+              displayName: item.displayName,
+              nbt: item.nbt
+            };
+          }).filter(Boolean);
+          fs.writeFileSync('gui_items_debug.json', JSON.stringify(debugSlots, null, 2), 'utf8');
+        } catch (e) {
+          console.error("Lỗi ghi file debug GUI:", e);
+        }
+
         // Tạo mảng danh sách vật phẩm gửi lên client
         const items = window.slots.map((item, index) => {
           if (!item) return null;
           return {
             slot: index,
             name: item.name,
-            count: item.count
+            displayName: getItemDisplayName(item),
+            displayNameHtml: getItemDisplayNameHtml(item),
+            count: item.count,
+            lore: getItemLoreFromNbt(item.nbt),
+            loreHtml: getItemLoreHtmlFromNbt(item.nbt),
+            nbt: item.nbt
           };
         }).filter(Boolean);
+
+        console.log(`[DEBUG GUI ITEMS] Bot ${username} opened GUI. First 5 items:`, JSON.stringify(items.slice(0, 5), null, 2));
 
         io.emit('gui-open', {
           botname: username,
@@ -558,11 +1384,22 @@ function startBotInstance(username, password) {
 
         // Lắng nghe sự kiện cập nhật vật phẩm trong GUI
         window.on('updateSlot', (slotIndex, oldItem, newItem) => {
+          if (newItem) {
+            console.log(`[DEBUG SLOT UPDATE] Bot ${username} Slot ${slotIndex}: name="${newItem.name}" -> displayName="${getItemDisplayName(newItem)}"`);
+          }
           io.emit('gui-update', {
             botname: username,
             id: window.id,
             slotIndex: slotIndex,
-            item: newItem ? { name: newItem.name, count: newItem.count } : null
+            item: newItem ? { 
+              name: newItem.name, 
+              displayName: getItemDisplayName(newItem), 
+              displayNameHtml: getItemDisplayNameHtml(newItem),
+              count: newItem.count,
+              lore: getItemLoreFromNbt(newItem.nbt),
+              loreHtml: getItemLoreHtmlFromNbt(newItem.nbt),
+              nbt: newItem.nbt
+            } : null
           });
         });
 
@@ -596,6 +1433,11 @@ function startBotInstance(username, password) {
                   logToWeb(username, `[Auto-Join] Đã click rương 1 thành công.`, 'system');
                 }
               });
+              
+              if (stepCount < 2) {
+                logToWeb(username, `[Auto-Join] Đang gửi click chọn cụm (rương 1).`, 'system');
+                onBotEnteredCluster(username);
+              }
             }, 500);
           } else if (activeBot.currentGuiStep === 1) {
             const targetSlot = slots[1] !== undefined ? slots[1] : 12;
@@ -611,9 +1453,12 @@ function startBotInstance(username, password) {
                 if (clickErr) {
                   logToWeb(username, `[Auto-Join] Lỗi click rương 2: ${clickErr.message}`, 'error');
                 } else {
-                  logToWeb(username, `[Auto-Join] Đã click rương 2 thành công. Tự động vào cụm hoàn tất.`, 'system');
+                  logToWeb(username, `[Auto-Join] Đã click rương 2 thành công.`, 'system');
                 }
               });
+              
+              logToWeb(username, `[Auto-Join] Đang gửi click chọn cụm (rương 2).`, 'system');
+              onBotEnteredCluster(username);
             }, 500);
           }
         }
@@ -633,6 +1478,8 @@ function startBotInstance(username, password) {
         activeBot.state = 'online';
         emitBotsUpdate();
         logToWeb(username, `Bot '${bot.username}' đã spawn vào server thành công!`, 'system');
+
+        // Bỏ qua debugger packet thô vì customScoreboard đã hoạt động tốt
 
         // Bắt đầu chuỗi đăng nhập và quét hotbar kiểm tra đồng hồ
         performLoginSequence(username, password, 1);
@@ -670,19 +1517,32 @@ function startBotInstance(username, password) {
         if (activeBot.loginCheckTimeout) clearTimeout(activeBot.loginCheckTimeout);
         activeBot.bot = null;
 
+        // Nếu bot đang kết nối bị ngắt, giải phóng hàng đợi để các acc tiếp theo kết nối
+        if (activeConnectingBot === username) {
+          if (activeConnectingTimeout) {
+            clearTimeout(activeConnectingTimeout);
+            activeConnectingTimeout = null;
+          }
+          activeConnectingBot = null;
+          // Kích hoạt tiến trình hàng đợi ngay lập tức
+          processReconnectQueue();
+        }
+
         // Nếu không phải tắt thủ công thì tự động kết nối lại
         if (activeBot.state !== 'offline') {
           activeBot.state = 'connecting';
           emitBotsUpdate();
           
           const reconnectDelay = parseInt(process.env.RECONNECT_DELAY_MS || '10000', 10);
-          logToWeb(username, `Sẽ tự động kết nối lại sau ${reconnectDelay / 1000} giây...`, 'system');
+          logToWeb(username, `Sẽ xếp hàng tự động kết nối lại sau ${reconnectDelay / 1000} giây...`, 'system');
           
           if (activeBot.reconnectTimeout) clearTimeout(activeBot.reconnectTimeout);
           activeBot.reconnectTimeout = setTimeout(() => {
-            startBotInstance(username, password);
+            addToReconnectQueue(username, password);
           }, reconnectDelay);
         } else {
+          // Đảm bảo xóa khỏi hàng đợi kết nối lại nếu tắt thủ công
+          removeFromReconnectQueue(username);
           emitBotsUpdate();
         }
       });
@@ -707,6 +1567,9 @@ function stopBotInstance(username) {
 
   if (activeBot.reconnectTimeout) clearTimeout(activeBot.reconnectTimeout);
   if (activeBot.loginCheckTimeout) clearTimeout(activeBot.loginCheckTimeout);
+
+  // Đảm bảo xóa khỏi hàng đợi kết nối lại tuần tự
+  removeFromReconnectQueue(username);
 
   if (activeBot.bot) {
     try {

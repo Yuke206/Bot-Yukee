@@ -593,14 +593,17 @@ input:focus, select:focus {
 /* GUI Grid Visual Selector */
 .gui-grid {
   display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(9, minmax(56px, 70px));
+  gap: 6px;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 16px;
-  max-height: 400px;
+  padding: 12px;
+  max-height: 440px;
   overflow-y: auto;
+  overflow-x: auto;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
 .gui-slot {
@@ -615,8 +618,9 @@ input:focus, select:focus {
   position: relative;
   cursor: pointer;
   transition: all 0.2s;
-  padding: 8px;
-  min-height: 70px;
+  padding: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .gui-slot:hover {
@@ -640,26 +644,30 @@ input:focus, select:focus {
   position: absolute;
   top: 4px;
   left: 6px;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-muted);
   font-family: monospace;
 }
 
 .slot-item-name {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
   text-align: center;
-  word-break: break-all;
+  word-break: break-word;
   max-width: 100%;
   color: #e2e8f0;
-  line-height: 1.2;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .slot-item-count {
   position: absolute;
   bottom: 4px;
   right: 6px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
   color: var(--color-success);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
@@ -770,4 +778,62 @@ input:focus, select:focus {
   border-top: 2px solid var(--border-color);
   border-bottom: none;
   background: rgba(255, 255, 255, 0.02);
+}
+
+/* Global Tooltip for GUI items resembling Minecraft style */
+.gui-global-tooltip {
+  background-color: rgba(16, 1, 16, 0.98);
+  border: 2px solid #2d0a66; /* Purple border */
+  border-radius: 4px;
+  color: #aaaaaa; /* Default Minecraft gray */
+  padding: 10px 14px;
+  font-size: 13px;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  text-align: left;
+  line-height: 1.4;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  min-width: 200px;
+  max-width: 450px;
+}
+
+.tooltip-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff; /* Fallback white, usually styled inline */
+  margin-bottom: 6px;
+  display: block;
+}
+
+.tooltip-line {
+  display: block;
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  color: #aaaaaa;
+  font-size: 13px;
+  margin-bottom: 2px;
+  white-space: pre-wrap;
+}
+
+.tooltip-id {
+  color: #555555; /* Dark gray */
+  font-family: monospace;
+  font-size: 11px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 4px;
+}
+
+.tooltip-components {
+  color: #555555; /* Dark gray */
+  font-family: monospace;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Obfuscated style for §k */
+.mc-obfuscated {
+  text-shadow: 0 0 1px currentColor;
+  color: transparent !important;
+  background: currentColor;
+  opacity: 0.7;
 }

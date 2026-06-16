@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minecraft Multi-Bot Control Panel</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1.4">
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -226,7 +226,20 @@
               <div id="macro-move-config-group" style="display: none;">
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="macro-move-delay">Thời gian chờ di chuyển (ms)</label>
+                    <label for="macro-move-trigger-type">Kích hoạt di chuyển bằng</label>
+                    <select id="macro-move-trigger-type">
+                      <option value="delay">Thời gian chờ sau lệnh (Delay)</option>
+                      <option value="keyword">Từ khóa xuất hiện sau lệnh (Keyword)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" id="macro-move-trigger-keyword-group" style="display: none;">
+                    <label for="macro-move-trigger-keyword">Từ khóa chờ trong chat</label>
+                    <input type="text" id="macro-move-trigger-keyword" placeholder="Nhập từ khóa chat để đi...">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="macro-move-delay" id="macro-move-delay-label">Thời gian chờ di chuyển (ms)</label>
                     <input type="number" id="macro-move-delay" placeholder="1000" min="0">
                   </div>
                   <div class="form-group">
@@ -311,8 +324,11 @@
     </section>
   </div>
 
+  <!-- Global Tooltip for GUI items -->
+  <div id="gui-global-tooltip" class="gui-global-tooltip" style="display: none; position: absolute; z-index: 9999; pointer-events: none;"></div>
+
   <!-- Client-side Socket.io -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=1.4"></script>
 </body>
 </html>
